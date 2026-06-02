@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#2563eb" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="課題管理" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png" />
+  <title>課題・カレンダー管理アプリ</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --main: #2563eb;
+      --main-dark: #1d4ed8;
+      --danger: #dc2626;
+      --success: #16a34a;
+      --warning: #f59e0b;
+      --border: #e5e7eb;
+      --shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    header {
+      background: linear-gradient(135deg, #2563eb, #4f46e5);
+      color: white;
+      padding: 28px 20px;
+      text-align: center;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+
+    header p {
+      margin: 8px 0 0;
+      opacity: 0.9;
+    }
+
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: white;
+      display: flex;
+      gap: 8px;
+      padding: 10px;
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+    }
+
+    nav button {
+      border: none;
+      background: #eef2ff;
+      color: #3730a3;
+      padding: 10px 14px;
+      border-radius: 999px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    nav button.active {
+      background: var(--main);
+      color: white;
+    }
+
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    section {
+      display: none;
+    }
+
+    section.active {
+      display: block;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+    }
+
+    .card h2, .card h3 {
+      margin-top: 0;
+    }
+
+    .number {
+      font-size: 30px;
+      font-weight: 800;
+      margin: 8px 0;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    form {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 11px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      font-size: 15px;
+      background: white;
+    }
+
+    textarea {
+      min-height: 46px;
+      resize: vertical;
+    }
+
+    button.primary {
+      border: none;
+      background: var(--main);
+      color: white;
+      padding: 11px 14px;
+      border-radius: 12px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    button.primary:hover {
+      background: var(--main-dark);
+    }
+
+    button.delete {
+      border: none;
+      background: #fee2e2;
+      color: var(--danger);
+      padding: 8px 10px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    button.done {
+      border: none;
+      background: #dcfce7;
+      color: var(--success);
+      padding: 8px 10px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .item:last-child {
+      border-bottom: none;
+    }
+
+    .item-title {
+      font-weight: 800;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #f3f4f6;
+      font-size: 12px;
+      color: #374151;
+      margin-right: 4px;
+      margin-top: 4px;
+    }
+
+    .high {
+      background: #fee2e2;
+      color: var(--danger);
+    }
+
+    .middle {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .low {
+      background: #dcfce7;
+      color: var(--success);
+    }
+
+    .completed {
+      opacity: 0.55;
+      text-decoration: line-through;
+    }
+
+    .bar-wrap {
+      background: #e5e7eb;
+      height: 12px;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .bar {
+      height: 100%;
+      width: 0%;
+      background: var(--main);
+      transition: 0.3s;
+    }
+
+    .danger-text {
+      color: var(--danger);
+      font-weight: 800;
+    }
+
+    .success-text {
+      color: var(--success);
+      font-weight: 800;
+    }
+
+    .footer-tools {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .secondary {
+      border: none;
+      background: #e5e7eb;
+      color: #374151;
+      padding: 10px 12px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .subject-tools {
+      display: grid;
+      grid-template-columns: minmax(180px, 1fr) auto;
+      gap: 10px;
+      margin: 14px 0 18px;
+    }
+
+    .subject-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    .subject-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: #eef2ff;
+      color: #3730a3;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .subject-chip button {
+      border: none;
+      background: transparent;
+      color: #4338ca;
+      cursor: pointer;
+      font-weight: 900;
+      padding: 0 2px;
+    }
+
+    .calendar-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .calendar-title {
+      font-size: 26px;
+      font-weight: 900;
+    }
+
+    .calendar-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .calendar-summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .summary-box {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    .summary-box strong {
+      display: block;
+      font-size: 22px;
+      margin-top: 4px;
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      background: white;
+    }
+
+    .weekday,
+    .calendar-day {
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .weekday:nth-child(7n),
+    .calendar-day:nth-child(7n) {
+      border-right: none;
+    }
+
+    .weekday {
+      background: #f8fafc;
+      color: #475569;
+      padding: 10px 8px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .weekday.sun {
+      color: var(--danger);
+    }
+
+    .weekday.sat {
+      color: var(--main);
+    }
+
+    .calendar-day {
+      min-height: 128px;
+      padding: 8px;
+      background: white;
+    }
+
+    .calendar-day.empty {
+      background: #f8fafc;
+    }
+
+    .calendar-day.today {
+      background: #eff6ff;
+      box-shadow: inset 0 0 0 2px var(--main);
+    }
+
+    .date-number {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      min-height: 22px;
+      color: #475569;
+      font-size: 13px;
+      font-weight: 900;
+      margin-bottom: 6px;
+    }
+
+    .today-label {
+      color: white;
+      background: var(--main);
+      border-radius: 999px;
+      padding: 2px 6px;
+      font-size: 11px;
+    }
+
+    .calendar-task {
+      display: block;
+      border: 1px solid var(--border);
+      border-left: 5px solid var(--main);
+      border-radius: 8px;
+      background: #ffffff;
+      padding: 7px;
+      margin-top: 6px;
+      text-align: left;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    .calendar-task.high {
+      border-left-color: var(--danger);
+    }
+
+    .calendar-task.middle {
+      border-left-color: var(--warning);
+    }
+
+    .calendar-task.low {
+      border-left-color: var(--success);
+    }
+
+    .calendar-task.completed-task {
+      opacity: 0.55;
+    }
+
+    .calendar-task-title {
+      display: block;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 900;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    .calendar-task-meta {
+      color: var(--muted);
+      display: block;
+      font-size: 11px;
+      line-height: 1.4;
+      margin-top: 2px;
+      overflow-wrap: anywhere;
+    }
+
+    .calendar-list {
+      margin-top: 16px;
+    }
+
+    .calendar-list h3 {
+      margin-bottom: 6px;
+    }
+
+    @media (max-width: 600px) {
+      header h1 {
+        font-size: 23px;
+      }
+
+      main {
+        padding: 14px;
+      }
+
+      .item {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .actions {
+        width: 100%;
+      }
+
+      .subject-tools,
+      .calendar-head {
+        grid-template-columns: 1fr;
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .calendar-controls {
+        justify-content: stretch;
+      }
+
+      .calendar-controls button {
+        flex: 1;
+      }
+
+      .calendar-grid {
+        display: block;
+        border-radius: 12px;
+      }
+
+      .weekday {
+        display: none;
+      }
+
+      .calendar-day {
+        min-height: auto;
+        border-right: none;
+      }
+
+      .calendar-day.empty {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>課題・カレンダー管理アプリ</h1>
+    <p>課題の締切を登録して、カレンダーで確認</p>
+  </header>
+
+  <nav>
+    <button class="tab active" onclick="showPage('taskPage', this)">課題</button>
+    <button class="tab" onclick="showPage('calendarPage', this)">カレンダー</button>
+  </nav>
+
+  <main>
+    <section id="taskPage" class="active">
+      <div class="card">
+        <h2>課題管理</h2>
+        <h3>科目登録</h3>
+        <div class="subject-tools">
+          <input id="newSubjectName" type="text" placeholder="新しい科目名 例: 英語" onkeydown="addSubjectOnEnter(event)" />
+          <button class="primary" type="button" onclick="addSubject()">登録</button>
+        </div>
+        <div id="subjectList" class="subject-list"></div>
+        <form onsubmit="addTask(event)">
+          <input id="taskTitle" type="text" placeholder="課題名 例: 英語レポート" required />
+          <select id="taskSubject"></select>
+          <input id="taskDeadline" type="date" required />
+          <select id="taskPriority">
+            <option value="高">優先度：高</option>
+            <option value="中">優先度：中</option>
+            <option value="低">優先度：低</option>
+          </select>
+          <button class="primary" type="submit">追加</button>
+        </form>
+        <div id="taskList"></div>
+      </div>
+    </section>
+
+    <section id="calendarPage">
+      <div class="card">
+        <div class="calendar-head">
+          <div class="calendar-title" id="calendarTitle"></div>
+          <div class="calendar-controls">
+            <button class="secondary" onclick="moveCalendarMonth(-1)">前の月</button>
+            <button class="secondary" onclick="moveCalendarMonth(0)">今月</button>
+            <button class="secondary" onclick="moveCalendarMonth(1)">次の月</button>
+          </div>
+        </div>
+        <div class="calendar-summary">
+          <div class="summary-box">
+            <span class="muted">今月の課題</span>
+            <strong id="calendarMonthCount">0件</strong>
+          </div>
+          <div class="summary-box">
+            <span class="muted">未完了</span>
+            <strong id="calendarMonthUnfinished">0件</strong>
+          </div>
+          <div class="summary-box">
+            <span class="muted">期限切れ</span>
+            <strong id="calendarMonthOverdue">0件</strong>
+          </div>
+        </div>
+        <div id="calendarGrid" class="calendar-grid"></div>
+        <div class="calendar-list">
+          <h3>近い締切</h3>
+          <div id="upcomingTaskList"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+    let registeredSubjects = JSON.parse(localStorage.getItem("registeredSubjects")) || [];
+
+    registeredSubjects = normalizeSubjects(registeredSubjects);
+
+    const todayString = formatDateInput(new Date());
+    let visibleCalendarYear = new Date().getFullYear();
+    let visibleCalendarMonth = new Date().getMonth();
+
+    document.getElementById("taskDeadline").value = todayString;
+
+    function saveAll() {
+      localStorage.setItem("tasks", JSON.stringify(tasks));
+      localStorage.setItem("registeredSubjects", JSON.stringify(registeredSubjects));
+    }
+
+    function showPage(pageId, button) {
+      document.querySelectorAll("section").forEach(section => section.classList.remove("active"));
+      document.getElementById(pageId).classList.add("active");
+
+      document.querySelectorAll(".tab").forEach(tab => tab.classList.remove("active"));
+      button.classList.add("active");
+
+      renderAll();
+    }
+
+    function formatDateInput(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+
+    function buildDateString(year, month, day) {
+      return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function normalizeSubjects(subjects) {
+      const names = [
+        ...subjects,
+        ...tasks.map(task => task.subject)
+      ];
+
+      return [...new Set(names.map(name => String(name || "").trim()).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, "ja"));
+    }
+
+    function addSubject() {
+      const input = document.getElementById("newSubjectName");
+      const name = input.value.trim();
+      if (!name) return;
+
+      registeredSubjects = normalizeSubjects([...registeredSubjects, name]);
+      input.value = "";
+      saveAll();
+      renderSubjectManager();
+      renderSubjectOptions(name);
+    }
+
+    function addSubjectOnEnter(event) {
+      if (event.key !== "Enter") return;
+
+      event.preventDefault();
+      addSubject();
+    }
+
+    function deleteSubject(index) {
+      const subject = registeredSubjects[index];
+      if (!subject) return;
+
+      const ok = confirm(`${subject} を登録科目から削除しますか？登録済みの課題はそのまま残ります。`);
+      if (!ok) return;
+
+      registeredSubjects = registeredSubjects.filter(name => name !== subject);
+      saveAll();
+      renderSubjectManager();
+      renderSubjectOptions();
+    }
+
+    function renderSubjectManager() {
+      const list = document.getElementById("subjectList");
+
+      if (registeredSubjects.length === 0) {
+        list.innerHTML = "<p class='muted'>科目を登録すると、課題追加で選べるようになります。</p>";
+        return;
+      }
+
+      list.innerHTML = registeredSubjects.map((subject, index) => `
+        <span class="subject-chip">
+          ${escapeHtml(subject)}
+          <button type="button" onclick="deleteSubject(${index})">×</button>
+        </span>
+      `).join("");
+    }
+
+    function renderSubjectOptions(selectedSubject = "") {
+      const select = document.getElementById("taskSubject");
+      const currentValue = selectedSubject || select.value;
+      const options = [
+        "<option value=''>科目なし</option>",
+        ...registeredSubjects.map(subject => (
+          `<option value="${escapeHtml(subject)}">${escapeHtml(subject)}</option>`
+        ))
+      ];
+
+      select.innerHTML = options.join("");
+      if (registeredSubjects.includes(currentValue)) {
+        select.value = currentValue;
+      }
+    }
+
+    function addTask(event) {
+      event.preventDefault();
+
+      const task = {
+        id: Date.now(),
+        title: document.getElementById("taskTitle").value.trim(),
+        subject: document.getElementById("taskSubject").value.trim(),
+        deadline: document.getElementById("taskDeadline").value,
+        priority: document.getElementById("taskPriority").value,
+        completed: false
+      };
+
+      tasks.push(task);
+      saveAll();
+      event.target.reset();
+      document.getElementById("taskDeadline").value = todayString;
+      renderAll();
+    }
+
+    function toggleTask(id) {
+      tasks = tasks.map(task => {
+        if (task.id === id) {
+          return { ...task, completed: !task.completed };
+        }
+        return task;
+      });
+      saveAll();
+      renderAll();
+    }
+
+    function deleteTask(id) {
+      tasks = tasks.filter(task => task.id !== id);
+      saveAll();
+      renderAll();
+    }
+
+    function priorityClass(priority) {
+      if (priority === "高") return "high";
+      if (priority === "中") return "middle";
+      return "low";
+    }
+
+    function renderTasks() {
+      const list = document.getElementById("taskList");
+      const sorted = [...tasks].sort((a, b) => {
+        if (a.completed !== b.completed) return a.completed ? 1 : -1;
+        return a.deadline.localeCompare(b.deadline);
+      });
+
+      if (sorted.length === 0) {
+        list.innerHTML = "<p class='muted'>まだ課題がありません。</p>";
+        return;
+      }
+
+      list.innerHTML = sorted.map(task => `
+        <div class="item">
+          <div class="${task.completed ? "completed" : ""}">
+            <div class="item-title">${escapeHtml(task.title)}</div>
+            <span class="badge">締切 ${escapeHtml(task.deadline)}</span>
+            ${task.subject ? `<span class="badge">${escapeHtml(task.subject)}</span>` : ""}
+            <span class="badge ${priorityClass(task.priority)}">優先度 ${escapeHtml(task.priority)}</span>
+          </div>
+          <div class="actions">
+            <button class="done" onclick="toggleTask(${task.id})">${task.completed ? "未完了に戻す" : "完了"}</button>
+            <button class="delete" onclick="deleteTask(${task.id})">削除</button>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function moveCalendarMonth(offset) {
+      if (offset === 0) {
+        visibleCalendarYear = new Date().getFullYear();
+        visibleCalendarMonth = new Date().getMonth();
+      } else {
+        const next = new Date(visibleCalendarYear, visibleCalendarMonth + offset, 1);
+        visibleCalendarYear = next.getFullYear();
+        visibleCalendarMonth = next.getMonth();
+      }
+
+      renderCalendar();
+    }
+
+    function renderCalendar() {
+      const title = document.getElementById("calendarTitle");
+      const grid = document.getElementById("calendarGrid");
+      const year = visibleCalendarYear;
+      const month = visibleCalendarMonth;
+      const monthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
+      const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+      const firstDay = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const monthTasks = tasks
+        .filter(task => task.deadline.startsWith(monthKey))
+        .sort((a, b) => a.deadline.localeCompare(b.deadline));
+      const unfinished = monthTasks.filter(task => !task.completed);
+      const overdue = unfinished.filter(task => task.deadline < todayString);
+      const tasksByDate = {};
+
+      monthTasks.forEach(task => {
+        tasksByDate[task.deadline] = tasksByDate[task.deadline] || [];
+        tasksByDate[task.deadline].push(task);
+      });
+
+      title.textContent = `${year}年 ${month + 1}月`;
+      document.getElementById("calendarMonthCount").textContent = `${monthTasks.length}件`;
+      document.getElementById("calendarMonthUnfinished").textContent = `${unfinished.length}件`;
+      document.getElementById("calendarMonthOverdue").textContent = `${overdue.length}件`;
+
+      let html = weekdays.map((day, index) => (
+        `<div class="weekday ${index === 0 ? "sun" : ""} ${index === 6 ? "sat" : ""}">${day}</div>`
+      )).join("");
+
+      for (let i = 0; i < firstDay; i++) {
+        html += "<div class='calendar-day empty'></div>";
+      }
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateString = buildDateString(year, month, day);
+        const dayTasks = tasksByDate[dateString] || [];
+        const taskButtons = dayTasks
+          .sort((a, b) => {
+            if (a.completed !== b.completed) return a.completed ? 1 : -1;
+            const priorityOrder = { "高": 0, "中": 1, "低": 2 };
+            return priorityOrder[a.priority] - priorityOrder[b.priority];
+          })
+          .map(task => `
+            <button
+              type="button"
+              class="calendar-task ${priorityClass(task.priority)} ${task.completed ? "completed-task" : ""}"
+              onclick="toggleTask(${task.id})"
+              aria-label="${escapeHtml(task.title)}の完了状態を切り替え"
+            >
+              <span class="calendar-task-title">${task.completed ? "済 " : ""}${escapeHtml(task.title)}</span>
+              <span class="calendar-task-meta">${task.subject ? escapeHtml(task.subject) + "・" : ""}優先度 ${escapeHtml(task.priority)}</span>
+            </button>
+          `).join("");
+
+        html += `
+          <div class="calendar-day ${dateString === todayString ? "today" : ""}">
+            <div class="date-number">
+              <span>${day}</span>
+              ${dateString === todayString ? "<span class='today-label'>今日</span>" : ""}
+            </div>
+            ${taskButtons}
+          </div>
+        `;
+      }
+
+      grid.innerHTML = html;
+      renderUpcomingTasks();
+    }
+
+    function renderUpcomingTasks() {
+      const list = document.getElementById("upcomingTaskList");
+      const upcoming = tasks
+        .filter(task => !task.completed)
+        .sort((a, b) => a.deadline.localeCompare(b.deadline))
+        .slice(0, 8);
+
+      if (upcoming.length === 0) {
+        list.innerHTML = "<p class='success-text'>未完了の課題はありません。</p>";
+        return;
+      }
+
+      list.innerHTML = upcoming.map(task => `
+        <div class="item">
+          <div>
+            <div class="item-title">${escapeHtml(task.title)}</div>
+            <span class="badge">締切 ${escapeHtml(task.deadline)}</span>
+            ${task.subject ? `<span class="badge">${escapeHtml(task.subject)}</span>` : ""}
+            <span class="badge ${priorityClass(task.priority)}">優先度 ${escapeHtml(task.priority)}</span>
+            ${task.deadline < todayString ? "<span class='badge high'>期限切れ</span>" : ""}
+          </div>
+          <div class="actions">
+            <button class="done" onclick="toggleTask(${task.id})">完了</button>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function renderAll() {
+      renderSubjectManager();
+      renderSubjectOptions();
+      renderTasks();
+      renderCalendar();
+    }
+
+    renderAll();
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./service-worker.js")
+          .catch(error => console.warn("Service Worker registration failed:", error));
+      });
+    }
+  </script>
+</body>
+</html>
