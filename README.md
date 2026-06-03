@@ -8,7 +8,7 @@ https://yuusep16-tech.github.io/assignment-app/
 
 ## スクリーンショット
 
-![アプリ画面](./images/screenshot.png)
+![アプリ画面](screenshot.png)
 
 ## 主な機能
 
