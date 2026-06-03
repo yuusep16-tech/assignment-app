@@ -278,21 +278,46 @@
       font-weight: 700;
     }
 
-    .subject-tools {
+    .management-grid {
       display: grid;
-      grid-template-columns: minmax(180px, 1fr) auto;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .manager-panel {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+    }
+
+    .manager-panel h3 {
+      margin: 0 0 12px;
+    }
+
+    .subject-tools,
+    .template-tools {
+      display: grid;
+      grid-template-columns: minmax(140px, 1fr) minmax(120px, auto) auto;
       gap: 10px;
       margin: 14px 0 18px;
     }
 
-    .subject-list {
+    .template-tools {
+      grid-template-columns: minmax(180px, 1fr) auto;
+    }
+
+    .subject-list,
+    .template-list {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
       margin-bottom: 18px;
     }
 
-    .subject-chip {
+    .subject-chip,
+    .template-chip {
       display: inline-flex;
       align-items: center;
       gap: 6px;
@@ -304,13 +329,97 @@
       font-weight: 800;
     }
 
-    .subject-chip button {
+    .template-chip {
+      background: #ecfdf5;
+      color: #166534;
+    }
+
+    .subject-chip button,
+    .template-chip button {
       border: none;
       background: transparent;
       color: #4338ca;
       cursor: pointer;
       font-weight: 900;
       padding: 0 2px;
+    }
+
+    .template-chip button {
+      color: #15803d;
+    }
+
+    .form-card {
+      border-top: 1px solid var(--border);
+      padding-top: 16px;
+    }
+
+    .form-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .form-title-row h3 {
+      margin: 0;
+    }
+
+    .form-wide {
+      grid-column: 1 / -1;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .task-card {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 14px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .task-card:last-child {
+      border-bottom: none;
+    }
+
+    .task-card.completed-task-card {
+      opacity: 0.62;
+    }
+
+    .task-card.completed-task-card .item-title,
+    .item.completed-task-card .item-title {
+      text-decoration: line-through;
+    }
+
+    .task-main {
+      min-width: 0;
+    }
+
+    .task-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .memo {
+      margin: 8px 0 0;
+      color: #4b5563;
+      overflow-wrap: anywhere;
+      line-height: 1.5;
+    }
+
+    button.edit {
+      border: none;
+      background: #dbeafe;
+      color: var(--main-dark);
+      padding: 8px 10px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 700;
     }
 
     .calendar-head {
@@ -453,6 +562,10 @@
       opacity: 0.55;
     }
 
+    .calendar-task.completed-task .calendar-task-title {
+      text-decoration: line-through;
+    }
+
     .calendar-task-title {
       display: block;
       color: var(--text);
@@ -498,10 +611,20 @@
       }
 
       .subject-tools,
+      .template-tools,
       .calendar-head {
         grid-template-columns: 1fr;
         flex-direction: column;
         align-items: stretch;
+      }
+
+      .task-card {
+        grid-template-columns: 1fr;
+      }
+
+      .actions button {
+        flex: 1;
+        min-height: 42px;
       }
 
       .calendar-controls {
@@ -547,23 +670,52 @@
     <section id="taskPage" class="active">
       <div class="card">
         <h2>課題管理</h2>
-        <h3>科目登録</h3>
-        <div class="subject-tools">
-          <input id="newSubjectName" type="text" placeholder="新しい科目名 例: 英語" onkeydown="addSubjectOnEnter(event)" />
-          <button class="primary" type="button" onclick="addSubject()">登録</button>
+        <div class="management-grid">
+          <div class="manager-panel">
+            <h3>教科登録</h3>
+            <div class="subject-tools">
+              <input id="newSubjectName" type="text" placeholder="教科名 例: 英語" onkeydown="addSubjectOnEnter(event)" />
+              <select id="newSubjectDueDay" aria-label="提出曜日">
+                <option value="0">日曜日</option>
+                <option value="1" selected>月曜日</option>
+                <option value="2">火曜日</option>
+                <option value="3">水曜日</option>
+                <option value="4">木曜日</option>
+                <option value="5">金曜日</option>
+                <option value="6">土曜日</option>
+              </select>
+              <button class="primary" type="button" onclick="addSubject()">登録</button>
+            </div>
+            <div id="subjectList" class="subject-list"></div>
+          </div>
+          <div class="manager-panel">
+            <h3>課題名テンプレート</h3>
+            <div class="template-tools">
+              <input id="newTemplateName" type="text" placeholder="例: レポート" onkeydown="addTemplateOnEnter(event)" />
+              <button class="primary" type="button" onclick="addTemplate()">追加</button>
+            </div>
+            <div id="templateList" class="template-list"></div>
+          </div>
         </div>
-        <div id="subjectList" class="subject-list"></div>
-        <form onsubmit="addTask(event)">
-          <input id="taskTitle" type="text" placeholder="課題名 例: 英語レポート" required />
-          <select id="taskSubject"></select>
-          <input id="taskDeadline" type="date" required />
-          <select id="taskPriority">
-            <option value="高">優先度：高</option>
-            <option value="中">優先度：中</option>
-            <option value="低">優先度：低</option>
-          </select>
-          <button class="primary" type="submit">追加</button>
-        </form>
+        <div class="form-card">
+          <div class="form-title-row">
+            <h3 id="taskFormTitle">課題追加</h3>
+            <button id="cancelEditButton" class="secondary hidden" type="button" onclick="cancelEdit()">編集をやめる</button>
+          </div>
+          <form id="taskForm" onsubmit="saveTask(event)">
+            <select id="taskSubject" required onchange="handleSubjectChange()"></select>
+            <select id="taskTitleSelect" required onchange="handleTitleSelectChange()"></select>
+            <input id="taskTitleOther" class="hidden" type="text" placeholder="課題名を入力" />
+            <input id="taskDeadline" type="date" required />
+            <select id="taskPriority">
+              <option value="high">優先度：高</option>
+              <option value="middle">優先度：中</option>
+              <option value="low">優先度：低</option>
+            </select>
+            <textarea id="taskMemo" class="form-wide" placeholder="メモ 例: 第8回の内容"></textarea>
+            <button id="taskSubmitButton" class="primary" type="submit">追加</button>
+          </form>
+        </div>
         <div id="taskList"></div>
       </div>
     </section>
@@ -602,20 +754,116 @@
   </main>
 
   <script>
-    let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-    let registeredSubjects = JSON.parse(localStorage.getItem("registeredSubjects")) || [];
-
-    registeredSubjects = normalizeSubjects(registeredSubjects);
-
+    const DEFAULT_TEMPLATES = [
+      "レポート",
+      "小テスト",
+      "予習",
+      "復習",
+      "プログラミング課題",
+      "発表準備",
+      "感想文",
+      "スライド作成"
+    ];
+    const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+    const weekdayLabels = ["日曜日", "月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日"];
     const todayString = formatDateInput(new Date());
+
+    let subjects = loadSubjects();
+    let taskTemplates = loadTaskTemplates();
+    let tasks = loadTasks();
+    let editingTaskId = null;
     let visibleCalendarYear = new Date().getFullYear();
     let visibleCalendarMonth = new Date().getMonth();
 
-    document.getElementById("taskDeadline").value = todayString;
+    migrateOldData();
+    removeExpiredTasks();
+    saveAll();
 
     function saveAll() {
+      localStorage.setItem("subjects", JSON.stringify(subjects));
+      localStorage.setItem("taskTemplates", JSON.stringify(taskTemplates));
       localStorage.setItem("tasks", JSON.stringify(tasks));
-      localStorage.setItem("registeredSubjects", JSON.stringify(registeredSubjects));
+      localStorage.removeItem("registeredSubjects");
+    }
+
+    function loadArray(key) {
+      try {
+        const value = JSON.parse(localStorage.getItem(key));
+        return Array.isArray(value) ? value : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function loadSubjects() {
+      return loadArray("subjects")
+        .map(subject => ({
+          id: String(subject.id || createId()),
+          name: String(subject.name || "").trim(),
+          dueDay: Number(subject.dueDay)
+        }))
+        .filter(subject => subject.name && subject.dueDay >= 0 && subject.dueDay <= 6);
+    }
+
+    function loadTaskTemplates() {
+      const saved = localStorage.getItem("taskTemplates");
+      const templates = saved === null
+        ? DEFAULT_TEMPLATES.map(name => ({ id: createId(), name }))
+        : loadArray("taskTemplates");
+
+      return templates
+        .map(template => ({
+          id: String(template.id || createId()),
+          name: String(template.name || "").trim()
+        }))
+        .filter(template => template.name);
+    }
+
+    function loadTasks() {
+      return loadArray("tasks")
+        .map(task => normalizeTask(task))
+        .filter(task => task.title && task.dueDate);
+    }
+
+    function migrateOldData() {
+      const oldSubjectNames = loadArray("registeredSubjects")
+        .map(name => String(name || "").trim())
+        .filter(Boolean);
+      const legacyTaskSubjects = loadArray("tasks")
+        .map(task => String(task.subject || "").trim())
+        .filter(Boolean);
+      const names = [...oldSubjectNames, ...legacyTaskSubjects];
+
+      names.forEach(name => {
+        if (!subjects.some(subject => subject.name === name)) {
+          subjects.push({ id: createId(), name, dueDay: 1 });
+        }
+      });
+
+      tasks = loadArray("tasks")
+        .map(task => normalizeTask(task))
+        .filter(task => task.title && task.dueDate);
+    }
+
+    function normalizeTask(task) {
+      const oldSubjectName = String(task.subject || "").trim();
+      const matchedSubject = oldSubjectName
+        ? subjects.find(subject => subject.name === oldSubjectName)
+        : null;
+
+      return {
+        id: String(task.id || createId()),
+        subjectId: String(task.subjectId || matchedSubject?.id || ""),
+        title: String(task.title || "").trim(),
+        dueDate: String(task.dueDate || task.deadline || ""),
+        priority: normalizePriority(task.priority),
+        memo: String(task.memo || "").trim(),
+        completed: task.completed ?? false
+      };
+    }
+
+    function createId() {
+      return `id-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
     }
 
     function showPage(pageId, button) {
@@ -639,6 +887,11 @@
       return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     }
 
+    function parseDateInput(value) {
+      const [year, month, day] = String(value || "").split("-").map(Number);
+      return new Date(year, month - 1, day);
+    }
+
     function escapeHtml(value) {
       return String(value ?? "")
         .replaceAll("&", "&amp;")
@@ -648,26 +901,37 @@
         .replaceAll("'", "&#039;");
     }
 
-    function normalizeSubjects(subjects) {
-      const names = [
-        ...subjects,
-        ...tasks.map(task => task.subject)
-      ];
+    function jsArgument(value) {
+      return escapeHtml(JSON.stringify(value));
+    }
 
-      return [...new Set(names.map(name => String(name || "").trim()).filter(Boolean))]
-        .sort((a, b) => a.localeCompare(b, "ja"));
+    function removeExpiredTasks() {
+      const before = tasks.length;
+      tasks = tasks.filter(task => !task.dueDate || task.dueDate >= todayString);
+      if (tasks.length !== before) saveAll();
     }
 
     function addSubject() {
-      const input = document.getElementById("newSubjectName");
-      const name = input.value.trim();
+      const nameInput = document.getElementById("newSubjectName");
+      const dueDayInput = document.getElementById("newSubjectDueDay");
+      const name = nameInput.value.trim();
+      const dueDay = Number(dueDayInput.value);
       if (!name) return;
 
-      registeredSubjects = normalizeSubjects([...registeredSubjects, name]);
-      input.value = "";
+      if (subjects.some(subject => subject.name === name)) {
+        alert("同じ名前の教科がすでに登録されています。");
+        return;
+      }
+
+      const subject = { id: createId(), name, dueDay };
+      subjects.push(subject);
+      subjects.sort((a, b) => a.name.localeCompare(b.name, "ja"));
+      nameInput.value = "";
       saveAll();
-      renderSubjectManager();
-      renderSubjectOptions(name);
+      renderAll();
+      renderSubjectOptions(subject.id);
+      document.getElementById("taskSubject").value = subject.id;
+      handleSubjectChange();
     }
 
     function addSubjectOnEnter(event) {
@@ -677,98 +941,305 @@
       addSubject();
     }
 
-    function deleteSubject(index) {
-      const subject = registeredSubjects[index];
+    function deleteSubject(id) {
+      const subject = subjects.find(item => item.id === id);
       if (!subject) return;
 
-      const ok = confirm(`${subject} を登録科目から削除しますか？登録済みの課題はそのまま残ります。`);
+      const ok = confirm(`${subject.name} を登録教科から削除しますか？登録済みの課題はそのまま残ります。`);
       if (!ok) return;
 
-      registeredSubjects = registeredSubjects.filter(name => name !== subject);
+      subjects = subjects.filter(item => item.id !== id);
       saveAll();
-      renderSubjectManager();
-      renderSubjectOptions();
+      renderAll();
     }
 
     function renderSubjectManager() {
       const list = document.getElementById("subjectList");
 
-      if (registeredSubjects.length === 0) {
-        list.innerHTML = "<p class='muted'>科目を登録すると、課題追加で選べるようになります。</p>";
+      if (subjects.length === 0) {
+        list.innerHTML = "<p class='muted'>教科と提出曜日を登録すると、課題追加で選べるようになります。</p>";
         return;
       }
 
-      list.innerHTML = registeredSubjects.map((subject, index) => `
+      list.innerHTML = subjects.map(subject => `
         <span class="subject-chip">
-          ${escapeHtml(subject)}
-          <button type="button" onclick="deleteSubject(${index})">×</button>
+          ${escapeHtml(subject.name)}・${weekdayLabels[subject.dueDay]}
+          <button type="button" onclick='deleteSubject(${jsArgument(subject.id)})'>×</button>
         </span>
       `).join("");
     }
 
-    function renderSubjectOptions(selectedSubject = "") {
+    function renderSubjectOptions(selectedSubjectId = "") {
       const select = document.getElementById("taskSubject");
-      const currentValue = selectedSubject || select.value;
-      const options = [
-        "<option value=''>科目なし</option>",
-        ...registeredSubjects.map(subject => (
-          `<option value="${escapeHtml(subject)}">${escapeHtml(subject)}</option>`
+      const currentValue = selectedSubjectId || select.value;
+      const missingSelected = currentValue && !subjects.some(subject => subject.id === currentValue);
+      const options = subjects.length
+        ? subjects.map(subject => (
+          `<option value="${escapeHtml(subject.id)}">${escapeHtml(subject.name)}（${weekdayLabels[subject.dueDay]}）</option>`
         ))
+        : ["<option value=''>教科を登録してください</option>"];
+
+      if (missingSelected) {
+        options.unshift(`<option value="${escapeHtml(currentValue)}">削除済みの教科</option>`);
+      }
+
+      select.innerHTML = options.join("");
+      if (currentValue) select.value = currentValue;
+      if (!select.value && subjects[0]) select.value = subjects[0].id;
+    }
+
+    function addTemplate() {
+      const input = document.getElementById("newTemplateName");
+      const name = input.value.trim();
+      if (!name) return;
+
+      if (taskTemplates.some(template => template.name === name)) {
+        alert("同じ名前のテンプレートがすでに登録されています。");
+        return;
+      }
+
+      taskTemplates.push({ id: createId(), name });
+      input.value = "";
+      saveAll();
+      renderAll();
+    }
+
+    function addTemplateOnEnter(event) {
+      if (event.key !== "Enter") return;
+
+      event.preventDefault();
+      addTemplate();
+    }
+
+    function deleteTemplate(id) {
+      taskTemplates = taskTemplates.filter(template => template.id !== id);
+      saveAll();
+      renderAll();
+    }
+
+    function renderTemplateManager() {
+      const list = document.getElementById("templateList");
+
+      if (taskTemplates.length === 0) {
+        list.innerHTML = "<p class='muted'>テンプレートを追加すると、課題名を選べるようになります。</p>";
+        return;
+      }
+
+      list.innerHTML = taskTemplates.map(template => `
+        <span class="template-chip">
+          ${escapeHtml(template.name)}
+          <button type="button" onclick='deleteTemplate(${jsArgument(template.id)})'>×</button>
+        </span>
+      `).join("");
+    }
+
+    function renderTemplateOptions(selectedTitle = "") {
+      const select = document.getElementById("taskTitleSelect");
+      const customInput = document.getElementById("taskTitleOther");
+      const currentTitle = selectedTitle || getSelectedTaskTitle();
+      const matched = taskTemplates.find(template => template.name === currentTitle);
+      const options = [
+        ...taskTemplates.map(template => (
+          `<option value="${escapeHtml(template.name)}">${escapeHtml(template.name)}</option>`
+        )),
+        "<option value='__other__'>その他</option>"
       ];
 
       select.innerHTML = options.join("");
-      if (registeredSubjects.includes(currentValue)) {
-        select.value = currentValue;
+
+      if (matched) {
+        select.value = matched.name;
+        customInput.value = "";
+      } else {
+        select.value = "__other__";
+        customInput.value = currentTitle;
       }
+
+      handleTitleSelectChange();
     }
 
-    function addTask(event) {
-      event.preventDefault();
+    function handleTitleSelectChange() {
+      const select = document.getElementById("taskTitleSelect");
+      const customInput = document.getElementById("taskTitleOther");
+      const isOther = select.value === "__other__";
 
+      customInput.classList.toggle("hidden", !isOther);
+      customInput.required = isOther;
+      customInput.disabled = !isOther;
+      if (isOther) customInput.focus();
+    }
+
+    function getSelectedTaskTitle() {
+      const select = document.getElementById("taskTitleSelect");
+      if (select.value === "__other__") {
+        return document.getElementById("taskTitleOther").value.trim();
+      }
+      return select.value.trim();
+    }
+
+    function handleSubjectChange() {
+      const subject = subjects.find(item => item.id === document.getElementById("taskSubject").value);
+      if (!subject) return;
+
+      document.getElementById("taskDeadline").value = getNextDueDate(subject.dueDay);
+    }
+
+    function getNextDueDate(dueDay) {
+      const base = new Date();
+      base.setHours(0, 0, 0, 0);
+      const currentDay = base.getDay();
+      let daysToAdd = (Number(dueDay) - currentDay + 7) % 7;
+      if (daysToAdd === 0) daysToAdd = 7;
+
+      const nextDate = new Date(base);
+      nextDate.setDate(base.getDate() + daysToAdd);
+      return formatDateInput(nextDate);
+    }
+
+    function saveTask(event) {
+      event.preventDefault();
+      removeExpiredTasks();
+
+      const title = getSelectedTaskTitle();
+      const subjectId = document.getElementById("taskSubject").value;
+      if (!subjectId) {
+        alert("先に教科を登録してください。");
+        return;
+      }
+      if (!title) {
+        alert("課題名を入力してください。");
+        return;
+      }
+
+      const existingTask = editingTaskId
+        ? tasks.find(item => item.id === editingTaskId)
+        : null;
       const task = {
-        id: Date.now(),
-        title: document.getElementById("taskTitle").value.trim(),
-        subject: document.getElementById("taskSubject").value.trim(),
-        deadline: document.getElementById("taskDeadline").value,
+        id: editingTaskId || createId(),
+        subjectId,
+        title,
+        dueDate: document.getElementById("taskDeadline").value,
         priority: document.getElementById("taskPriority").value,
-        completed: false
+        memo: document.getElementById("taskMemo").value.trim(),
+        completed: existingTask?.completed ?? false
       };
 
-      tasks.push(task);
+      if (editingTaskId) {
+        tasks = tasks.map(item => item.id === editingTaskId ? task : item);
+      } else {
+        tasks.push(task);
+      }
+
       saveAll();
-      event.target.reset();
-      document.getElementById("taskDeadline").value = todayString;
+      resetTaskForm();
       renderAll();
     }
 
-    function toggleTask(id) {
-      tasks = tasks.map(task => {
-        if (task.id === id) {
-          return { ...task, completed: !task.completed };
-        }
-        return task;
-      });
-      saveAll();
+    function startEdit(id) {
+      removeExpiredTasks();
+      const task = tasks.find(item => item.id === id);
+      if (!task) {
+        renderAll();
+        return;
+      }
+
+      editingTaskId = id;
+      document.getElementById("taskFormTitle").textContent = "課題編集";
+      document.getElementById("taskSubmitButton").textContent = "保存";
+      document.getElementById("cancelEditButton").classList.remove("hidden");
+      renderSubjectOptions(task.subjectId);
+      renderTemplateOptions(task.title);
+      document.getElementById("taskSubject").value = task.subjectId;
+      document.getElementById("taskDeadline").value = task.dueDate;
+      document.getElementById("taskPriority").value = task.priority;
+      document.getElementById("taskMemo").value = task.memo;
+      document.getElementById("taskForm").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    function cancelEdit() {
+      resetTaskForm();
       renderAll();
+    }
+
+    function resetTaskForm() {
+      editingTaskId = null;
+      document.getElementById("taskForm").reset();
+      document.getElementById("taskFormTitle").textContent = "課題追加";
+      document.getElementById("taskSubmitButton").textContent = "追加";
+      document.getElementById("cancelEditButton").classList.add("hidden");
+      renderSubjectOptions();
+      renderTemplateOptions(taskTemplates[0]?.name || "");
+
+      const selectedSubject = subjects.find(subject => subject.id === document.getElementById("taskSubject").value);
+      document.getElementById("taskDeadline").value = selectedSubject
+        ? getNextDueDate(selectedSubject.dueDay)
+        : todayString;
+    }
+
+    function toggleTaskCompleted(id) {
+      tasks = tasks.map(task => (
+        task.id === id
+          ? { ...task, completed: !task.completed }
+          : task
+      ));
+      saveAll();
+      renderTasks();
+      renderCalendar();
     }
 
     function deleteTask(id) {
+      const task = tasks.find(item => item.id === id);
+      if (!task) return;
+
+      const ok = confirm("この課題を削除しますか？");
+      if (!ok) return;
+
       tasks = tasks.filter(task => task.id !== id);
+      if (editingTaskId === id) resetTaskForm();
       saveAll();
       renderAll();
     }
 
-    function priorityClass(priority) {
-      if (priority === "高") return "high";
-      if (priority === "中") return "middle";
+    function normalizePriority(priority) {
+      if (priority === "高" || priority === "high") return "high";
+      if (priority === "中" || priority === "middle") return "middle";
       return "low";
+    }
+
+    function priorityClass(priority) {
+      return normalizePriority(priority);
+    }
+
+    function priorityLabel(priority) {
+      const labels = { high: "高", middle: "中", low: "低" };
+      return labels[normalizePriority(priority)];
+    }
+
+    function getSubjectName(subjectId) {
+      return subjects.find(subject => subject.id === subjectId)?.name || "削除済みの教科";
+    }
+
+    function getDueLabel(dueDate) {
+      const diff = Math.round((parseDateInput(dueDate) - parseDateInput(todayString)) / 86400000);
+      if (diff === 0) return "今日まで";
+      if (diff === 1) return "明日まで";
+      if (diff > 1 && diff <= 3) return "3日以内";
+      return `${weekdays[parseDateInput(dueDate).getDay()]}曜日`;
+    }
+
+    function dueBadgeClass(dueDate) {
+      const diff = Math.round((parseDateInput(dueDate) - parseDateInput(todayString)) / 86400000);
+      if (diff === 0) return "high";
+      if (diff <= 1) return "middle";
+      if (diff <= 3) return "low";
+      return "";
     }
 
     function renderTasks() {
       const list = document.getElementById("taskList");
       const sorted = [...tasks].sort((a, b) => {
         if (a.completed !== b.completed) return a.completed ? 1 : -1;
-        return a.deadline.localeCompare(b.deadline);
+        return a.dueDate.localeCompare(b.dueDate);
       });
 
       if (sorted.length === 0) {
@@ -777,16 +1248,22 @@
       }
 
       list.innerHTML = sorted.map(task => `
-        <div class="item">
-          <div class="${task.completed ? "completed" : ""}">
+        <div class="task-card ${task.completed ? "completed-task-card" : ""}">
+          <div class="task-main">
             <div class="item-title">${escapeHtml(task.title)}</div>
-            <span class="badge">締切 ${escapeHtml(task.deadline)}</span>
-            ${task.subject ? `<span class="badge">${escapeHtml(task.subject)}</span>` : ""}
-            <span class="badge ${priorityClass(task.priority)}">優先度 ${escapeHtml(task.priority)}</span>
+            <div class="task-meta">
+              <span class="badge">${escapeHtml(getSubjectName(task.subjectId))}</span>
+              <span class="badge ${dueBadgeClass(task.dueDate)}">提出期限 ${escapeHtml(task.dueDate)}（${weekdays[parseDateInput(task.dueDate).getDay()]}）</span>
+              <span class="badge ${dueBadgeClass(task.dueDate)}">${getDueLabel(task.dueDate)}</span>
+              <span class="badge ${priorityClass(task.priority)}">優先度 ${priorityLabel(task.priority)}</span>
+              <span class="badge ${task.completed ? "low" : ""}">状態 ${task.completed ? "完了済み" : "未完了"}</span>
+            </div>
+            ${task.memo ? `<p class="memo">${escapeHtml(task.memo)}</p>` : ""}
           </div>
           <div class="actions">
-            <button class="done" onclick="toggleTask(${task.id})">${task.completed ? "未完了に戻す" : "完了"}</button>
-            <button class="delete" onclick="deleteTask(${task.id})">削除</button>
+            <button class="edit" onclick='startEdit(${jsArgument(task.id)})'>編集</button>
+            <button class="done" onclick='toggleTaskCompleted(${jsArgument(task.id)})'>${task.completed ? "未完了に戻す" : "完了"}</button>
+            <button class="delete" onclick='deleteTask(${jsArgument(task.id)})'>削除</button>
           </div>
         </div>
       `).join("");
@@ -806,30 +1283,33 @@
     }
 
     function renderCalendar() {
+      removeExpiredTasks();
+
       const title = document.getElementById("calendarTitle");
       const grid = document.getElementById("calendarGrid");
       const year = visibleCalendarYear;
       const month = visibleCalendarMonth;
       const monthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
-      const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
       const firstDay = new Date(year, month, 1).getDay();
       const daysInMonth = new Date(year, month + 1, 0).getDate();
       const monthTasks = tasks
-        .filter(task => task.deadline.startsWith(monthKey))
-        .sort((a, b) => a.deadline.localeCompare(b.deadline));
+        .filter(task => task.dueDate.startsWith(monthKey))
+        .sort((a, b) => {
+          if (a.completed !== b.completed) return a.completed ? 1 : -1;
+          return a.dueDate.localeCompare(b.dueDate);
+        });
       const unfinished = monthTasks.filter(task => !task.completed);
-      const overdue = unfinished.filter(task => task.deadline < todayString);
       const tasksByDate = {};
 
       monthTasks.forEach(task => {
-        tasksByDate[task.deadline] = tasksByDate[task.deadline] || [];
-        tasksByDate[task.deadline].push(task);
+        tasksByDate[task.dueDate] = tasksByDate[task.dueDate] || [];
+        tasksByDate[task.dueDate].push(task);
       });
 
       title.textContent = `${year}年 ${month + 1}月`;
       document.getElementById("calendarMonthCount").textContent = `${monthTasks.length}件`;
       document.getElementById("calendarMonthUnfinished").textContent = `${unfinished.length}件`;
-      document.getElementById("calendarMonthOverdue").textContent = `${overdue.length}件`;
+      document.getElementById("calendarMonthOverdue").textContent = "0件";
 
       let html = weekdays.map((day, index) => (
         `<div class="weekday ${index === 0 ? "sun" : ""} ${index === 6 ? "sat" : ""}">${day}</div>`
@@ -845,18 +1325,18 @@
         const taskButtons = dayTasks
           .sort((a, b) => {
             if (a.completed !== b.completed) return a.completed ? 1 : -1;
-            const priorityOrder = { "高": 0, "中": 1, "低": 2 };
+            const priorityOrder = { high: 0, middle: 1, low: 2 };
             return priorityOrder[a.priority] - priorityOrder[b.priority];
           })
           .map(task => `
             <button
               type="button"
               class="calendar-task ${priorityClass(task.priority)} ${task.completed ? "completed-task" : ""}"
-              onclick="toggleTask(${task.id})"
+              onclick='toggleTaskCompleted(${jsArgument(task.id)})'
               aria-label="${escapeHtml(task.title)}の完了状態を切り替え"
             >
-              <span class="calendar-task-title">${task.completed ? "済 " : ""}${escapeHtml(task.title)}</span>
-              <span class="calendar-task-meta">${task.subject ? escapeHtml(task.subject) + "・" : ""}優先度 ${escapeHtml(task.priority)}</span>
+              <span class="calendar-task-title">${task.completed ? "✓ " : ""}${escapeHtml(getSubjectName(task.subjectId))} / ${escapeHtml(task.title)}</span>
+              <span class="calendar-task-meta">優先度 ${priorityLabel(task.priority)}${task.completed ? "・完了" : ""}</span>
             </button>
           `).join("");
 
@@ -877,9 +1357,11 @@
 
     function renderUpcomingTasks() {
       const list = document.getElementById("upcomingTaskList");
-      const upcoming = tasks
-        .filter(task => !task.completed)
-        .sort((a, b) => a.deadline.localeCompare(b.deadline))
+      const upcoming = [...tasks]
+        .sort((a, b) => {
+          if (a.completed !== b.completed) return a.completed ? 1 : -1;
+          return a.dueDate.localeCompare(b.dueDate);
+        })
         .slice(0, 8);
 
       if (upcoming.length === 0) {
@@ -888,28 +1370,34 @@
       }
 
       list.innerHTML = upcoming.map(task => `
-        <div class="item">
+        <div class="item ${task.completed ? "completed-task-card" : ""}">
           <div>
             <div class="item-title">${escapeHtml(task.title)}</div>
-            <span class="badge">締切 ${escapeHtml(task.deadline)}</span>
-            ${task.subject ? `<span class="badge">${escapeHtml(task.subject)}</span>` : ""}
-            <span class="badge ${priorityClass(task.priority)}">優先度 ${escapeHtml(task.priority)}</span>
-            ${task.deadline < todayString ? "<span class='badge high'>期限切れ</span>" : ""}
+            <span class="badge">${escapeHtml(getSubjectName(task.subjectId))}</span>
+            <span class="badge ${dueBadgeClass(task.dueDate)}">締切 ${escapeHtml(task.dueDate)}（${weekdays[parseDateInput(task.dueDate).getDay()]}）</span>
+            <span class="badge ${priorityClass(task.priority)}">優先度 ${priorityLabel(task.priority)}</span>
+            <span class="badge ${task.completed ? "low" : ""}">状態 ${task.completed ? "完了済み" : "未完了"}</span>
           </div>
           <div class="actions">
-            <button class="done" onclick="toggleTask(${task.id})">完了</button>
+            <button class="edit" onclick='startEdit(${jsArgument(task.id)})'>編集</button>
+            <button class="done" onclick='toggleTaskCompleted(${jsArgument(task.id)})'>${task.completed ? "未完了に戻す" : "完了"}</button>
+            <button class="delete" onclick='deleteTask(${jsArgument(task.id)})'>削除</button>
           </div>
         </div>
       `).join("");
     }
 
     function renderAll() {
+      removeExpiredTasks();
       renderSubjectManager();
+      renderTemplateManager();
       renderSubjectOptions();
+      renderTemplateOptions();
       renderTasks();
       renderCalendar();
     }
 
+    resetTaskForm();
     renderAll();
 
     if ("serviceWorker" in navigator) {
