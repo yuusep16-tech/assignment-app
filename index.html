@@ -201,7 +201,9 @@
 
     .actions {
       display: flex;
+      flex-wrap: wrap;
       gap: 8px;
+      justify-content: flex-end;
       flex-shrink: 0;
     }
 
@@ -416,6 +418,16 @@
       border: none;
       background: #dbeafe;
       color: var(--main-dark);
+      padding: 8px 10px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    button.calendar-add {
+      border: none;
+      background: #eef2ff;
+      color: #3730a3;
       padding: 8px 10px;
       border-radius: 10px;
       cursor: pointer;
@@ -1219,6 +1231,37 @@
       return subjects.find(subject => subject.id === subjectId)?.name || "削除済みの教科";
     }
 
+    function addDaysToDateString(dateString, days) {
+      const date = parseDateInput(dateString);
+      date.setDate(date.getDate() + days);
+      return formatDateInput(date);
+    }
+
+    function formatGoogleCalendarDate(dateString) {
+      return dateString.replaceAll("-", "");
+    }
+
+    function getGoogleCalendarUrl(task) {
+      const subjectName = getSubjectName(task.subjectId);
+      const title = `提出期限：${subjectName} / ${task.title}`;
+      const startDate = formatGoogleCalendarDate(task.dueDate);
+      const endDate = formatGoogleCalendarDate(addDaysToDateString(task.dueDate, 1));
+      const params = new URLSearchParams({
+        action: "TEMPLATE",
+        text: title,
+        dates: `${startDate}/${endDate}`
+      });
+
+      return `https://calendar.google.com/calendar/render?${params.toString()}`;
+    }
+
+    function openGoogleCalendarTask(id) {
+      const task = tasks.find(item => item.id === id);
+      if (!task) return;
+
+      window.open(getGoogleCalendarUrl(task), "_blank", "noopener");
+    }
+
     function getDueLabel(dueDate) {
       const diff = Math.round((parseDateInput(dueDate) - parseDateInput(todayString)) / 86400000);
       if (diff === 0) return "今日まで";
@@ -1261,6 +1304,7 @@
             ${task.memo ? `<p class="memo">${escapeHtml(task.memo)}</p>` : ""}
           </div>
           <div class="actions">
+            <button class="calendar-add" onclick='openGoogleCalendarTask(${jsArgument(task.id)})'>Googleカレンダーに追加</button>
             <button class="edit" onclick='startEdit(${jsArgument(task.id)})'>編集</button>
             <button class="done" onclick='toggleTaskCompleted(${jsArgument(task.id)})'>${task.completed ? "未完了に戻す" : "完了"}</button>
             <button class="delete" onclick='deleteTask(${jsArgument(task.id)})'>削除</button>
@@ -1379,6 +1423,7 @@
             <span class="badge ${task.completed ? "low" : ""}">状態 ${task.completed ? "完了済み" : "未完了"}</span>
           </div>
           <div class="actions">
+            <button class="calendar-add" onclick='openGoogleCalendarTask(${jsArgument(task.id)})'>Googleカレンダーに追加</button>
             <button class="edit" onclick='startEdit(${jsArgument(task.id)})'>編集</button>
             <button class="done" onclick='toggleTaskCompleted(${jsArgument(task.id)})'>${task.completed ? "未完了に戻す" : "完了"}</button>
             <button class="delete" onclick='deleteTask(${jsArgument(task.id)})'>削除</button>
