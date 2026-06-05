@@ -106,7 +106,7 @@
 
     .card {
       background: var(--card);
-      border-radius: 18px;
+      border-radius: 8px;
       padding: 18px;
       box-shadow: var(--shadow);
       border: 1px solid var(--border);
@@ -284,13 +284,13 @@
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
       gap: 16px;
-      margin-bottom: 20px;
+      margin-top: 16px;
     }
 
     .manager-panel {
       background: #f8fafc;
       border: 1px solid var(--border);
-      border-radius: 14px;
+      border-radius: 8px;
       padding: 14px;
     }
 
@@ -373,6 +373,184 @@
 
     .hidden {
       display: none;
+    }
+
+
+    .task-dashboard {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .task-focus-card {
+      border-left: 5px solid var(--main);
+    }
+
+    .task-focus-card h2,
+    .weekly-card h2,
+    .task-list-card h2,
+    .settings-card h2 {
+      margin-bottom: 10px;
+    }
+
+    .quick-task-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .quick-task,
+    .week-task {
+      display: grid;
+      gap: 6px;
+      width: 100%;
+      border: 1px solid var(--border);
+      border-left: 5px solid var(--main);
+      border-radius: 8px;
+      background: #ffffff;
+      color: var(--text);
+      padding: 11px 12px;
+      text-align: left;
+      cursor: pointer;
+      font: inherit;
+    }
+
+    .quick-task.high,
+    .week-task.high {
+      border-left-color: var(--danger);
+    }
+
+    .quick-task.middle,
+    .week-task.middle {
+      border-left-color: var(--warning);
+    }
+
+    .quick-task.low,
+    .week-task.low {
+      border-left-color: var(--success);
+    }
+
+    .quick-task.completed-task,
+    .week-task.completed-task {
+      background: #f8fafc;
+      opacity: 0.68;
+    }
+
+    .quick-task.completed-task .quick-task-title,
+    .week-task.completed-task .week-task-title {
+      text-decoration: line-through;
+    }
+
+    .quick-task-title,
+    .week-task-title {
+      font-weight: 900;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    .quick-task-meta,
+    .week-task-status {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .week-list {
+      display: grid;
+      gap: 14px;
+    }
+
+    .week-day {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #f8fafc;
+      overflow: hidden;
+    }
+
+    .week-day-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      background: #eef2ff;
+      color: #3730a3;
+      font-weight: 900;
+    }
+
+    .week-day.today .week-day-header {
+      background: #dbeafe;
+      color: var(--main-dark);
+    }
+
+    .week-day-body {
+      display: grid;
+      gap: 8px;
+      padding: 10px;
+      background: #ffffff;
+    }
+
+    .week-empty {
+      margin: 0;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .mobile-calendar-card {
+      display: none;
+    }
+
+    .mobile-calendar-toggle {
+      width: 100%;
+      min-height: 46px;
+      font-size: 15px;
+    }
+
+    .mobile-calendar-panel {
+      margin-top: 14px;
+    }
+
+    .settings-card summary {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .settings-card summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .settings-title {
+      font-size: 20px;
+      font-weight: 900;
+    }
+
+    .settings-hint {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.4;
+      margin-top: 3px;
+    }
+
+    .settings-card summary::after {
+      content: "開く";
+      border-radius: 999px;
+      background: #eef2ff;
+      color: #3730a3;
+      padding: 7px 11px;
+      font-size: 13px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .settings-card[open] summary::after {
+      content: "閉じる";
+      background: #e5e7eb;
+      color: #374151;
     }
 
     .task-card {
@@ -605,12 +783,37 @@
     }
 
     @media (max-width: 600px) {
+      header {
+        padding: 16px 14px;
+      }
+
       header h1 {
-        font-size: 23px;
+        font-size: 21px;
+      }
+
+      header p {
+        display: none;
+      }
+
+      nav {
+        padding: 8px;
+      }
+
+      nav button {
+        min-height: 42px;
+        padding: 9px 12px;
       }
 
       main {
-        padding: 14px;
+        padding: 10px;
+      }
+
+      .task-dashboard {
+        gap: 10px;
+      }
+
+      .card {
+        padding: 13px;
       }
 
       .item {
@@ -620,6 +823,14 @@
 
       .actions {
         width: 100%;
+      }
+
+      form {
+        grid-template-columns: 1fr;
+      }
+
+      input, select, textarea {
+        font-size: 16px;
       }
 
       .subject-tools,
@@ -639,6 +850,49 @@
         min-height: 42px;
       }
 
+      .task-focus-card h2,
+      .weekly-card h2,
+      .task-list-card h2,
+      .settings-title {
+        font-size: 18px;
+      }
+
+      .task-focus-card {
+        order: 1;
+      }
+
+      .weekly-card {
+        order: 2;
+      }
+
+      .task-form-card {
+        order: 3;
+      }
+
+      .task-list-card {
+        order: 4;
+      }
+
+      .mobile-calendar-card {
+        display: block;
+        order: 5;
+      }
+
+      .settings-card {
+        order: 6;
+      }
+
+      .week-day-header,
+      .week-day-body {
+        padding-left: 10px;
+        padding-right: 10px;
+      }
+
+      .quick-task,
+      .week-task {
+        min-height: 50px;
+      }
+
       .calendar-controls {
         justify-content: stretch;
       }
@@ -649,7 +903,7 @@
 
       .calendar-grid {
         display: block;
-        border-radius: 12px;
+        border-radius: 8px;
       }
 
       .weekday {
@@ -680,36 +934,18 @@
 
   <main>
     <section id="taskPage" class="active">
-      <div class="card">
-        <h2>課題管理</h2>
-        <div class="management-grid">
-          <div class="manager-panel">
-            <h3>教科登録</h3>
-            <div class="subject-tools">
-              <input id="newSubjectName" type="text" placeholder="教科名 例: 英語" onkeydown="addSubjectOnEnter(event)" />
-              <select id="newSubjectDueDay" aria-label="提出曜日">
-                <option value="0">日曜日</option>
-                <option value="1" selected>月曜日</option>
-                <option value="2">火曜日</option>
-                <option value="3">水曜日</option>
-                <option value="4">木曜日</option>
-                <option value="5">金曜日</option>
-                <option value="6">土曜日</option>
-              </select>
-              <button class="primary" type="button" onclick="addSubject()">登録</button>
-            </div>
-            <div id="subjectList" class="subject-list"></div>
-          </div>
-          <div class="manager-panel">
-            <h3>課題名テンプレート</h3>
-            <div class="template-tools">
-              <input id="newTemplateName" type="text" placeholder="例: レポート" onkeydown="addTemplateOnEnter(event)" />
-              <button class="primary" type="button" onclick="addTemplate()">追加</button>
-            </div>
-            <div id="templateList" class="template-list"></div>
-          </div>
+      <div class="task-dashboard">
+        <div class="card task-focus-card">
+          <h2 id="taskFocusTitle">今日やること</h2>
+          <div id="todayFocusList" class="quick-task-list"></div>
         </div>
-        <div class="form-card">
+
+        <div class="card weekly-card">
+          <h2>今日から7日間の課題</h2>
+          <div id="sevenDayTaskList" class="week-list"></div>
+        </div>
+
+        <div class="card task-form-card">
           <div class="form-title-row">
             <h3 id="taskFormTitle">課題追加</h3>
             <button id="cancelEditButton" class="secondary hidden" type="button" onclick="cancelEdit()">編集をやめる</button>
@@ -728,7 +964,76 @@
             <button id="taskSubmitButton" class="primary" type="submit">追加</button>
           </form>
         </div>
-        <div id="taskList"></div>
+
+        <div class="card task-list-card">
+          <h2>全課題一覧</h2>
+          <div id="taskList"></div>
+        </div>
+
+        <div class="card mobile-calendar-card">
+          <button id="mobileCalendarToggle" class="secondary mobile-calendar-toggle" type="button" onclick="toggleMobileCalendar()">月カレンダーを見る</button>
+          <div id="mobileCalendarPanel" class="mobile-calendar-panel hidden" aria-hidden="true">
+            <div class="calendar-head">
+              <div class="calendar-title" id="mobileCalendarTitle"></div>
+              <div class="calendar-controls">
+                <button class="secondary" onclick="moveMobileCalendarMonth(-1)">前の月</button>
+                <button class="secondary" onclick="moveMobileCalendarMonth(0)">今月</button>
+                <button class="secondary" onclick="moveMobileCalendarMonth(1)">次の月</button>
+              </div>
+            </div>
+            <div class="calendar-summary">
+              <div class="summary-box">
+                <span class="muted">今月の課題</span>
+                <strong id="mobileCalendarMonthCount">0件</strong>
+              </div>
+              <div class="summary-box">
+                <span class="muted">未完了</span>
+                <strong id="mobileCalendarMonthUnfinished">0件</strong>
+              </div>
+              <div class="summary-box">
+                <span class="muted">期限切れ</span>
+                <strong id="mobileCalendarMonthOverdue">0件</strong>
+              </div>
+            </div>
+            <div id="mobileCalendarGrid" class="calendar-grid"></div>
+          </div>
+        </div>
+
+        <details class="card settings-card">
+          <summary>
+            <span>
+              <span class="settings-title">設定：教科・課題テンプレ管理</span>
+              <span class="settings-hint">教科登録、提出曜日、テンプレートを管理</span>
+            </span>
+          </summary>
+          <div class="management-grid">
+            <div class="manager-panel">
+              <h3>教科登録</h3>
+              <div class="subject-tools">
+                <input id="newSubjectName" type="text" placeholder="教科名 例: 英語" onkeydown="addSubjectOnEnter(event)" />
+                <select id="newSubjectDueDay" aria-label="提出曜日">
+                  <option value="0">日曜日</option>
+                  <option value="1" selected>月曜日</option>
+                  <option value="2">火曜日</option>
+                  <option value="3">水曜日</option>
+                  <option value="4">木曜日</option>
+                  <option value="5">金曜日</option>
+                  <option value="6">土曜日</option>
+                </select>
+                <button class="primary" type="button" onclick="addSubject()">登録</button>
+              </div>
+              <div id="subjectList" class="subject-list"></div>
+            </div>
+            <div class="manager-panel">
+              <h3>課題名テンプレート</h3>
+              <div class="template-tools">
+                <input id="newTemplateName" type="text" placeholder="例: レポート" onkeydown="addTemplateOnEnter(event)" />
+                <button class="primary" type="button" onclick="addTemplate()">追加</button>
+              </div>
+              <div id="templateList" class="template-list"></div>
+            </div>
+          </div>
+        </details>
       </div>
     </section>
 
@@ -786,6 +1091,9 @@
     let editingTaskId = null;
     let visibleCalendarYear = new Date().getFullYear();
     let visibleCalendarMonth = new Date().getMonth();
+    let visibleMobileCalendarYear = new Date().getFullYear();
+    let visibleMobileCalendarMonth = new Date().getMonth();
+    let isMobileCalendarOpen = false;
 
     migrateOldData();
     removeExpiredTasks();
@@ -1196,7 +1504,10 @@
       ));
       saveAll();
       renderTasks();
+      renderTodayFocus();
+      renderSevenDayTasks();
       renderCalendar();
+      renderMobileCalendar();
     }
 
     function deleteTask(id) {
@@ -1268,6 +1579,86 @@
       if (diff === 1) return "明日まで";
       if (diff > 1 && diff <= 3) return "3日以内";
       return `${weekdays[parseDateInput(dueDate).getDay()]}曜日`;
+    }
+
+
+    function formatShortDate(dateString) {
+      const date = parseDateInput(dateString);
+      return `${date.getMonth() + 1}/${date.getDate()}（${weekdays[date.getDay()]}）`;
+    }
+
+    function sortTasksForDisplay(list) {
+      return [...list].sort((a, b) => {
+        if (a.completed !== b.completed) return a.completed ? 1 : -1;
+        if (a.dueDate !== b.dueDate) return a.dueDate.localeCompare(b.dueDate);
+        const priorityOrder = { high: 0, middle: 1, low: 2 };
+        return priorityOrder[a.priority] - priorityOrder[b.priority];
+      });
+    }
+
+    function getTasksForDate(dateString) {
+      return sortTasksForDisplay(tasks.filter(task => task.dueDate === dateString));
+    }
+
+    function renderTaskToggleButton(task, className) {
+      const titleClass = className === "quick-task" ? "quick-task-title" : "week-task-title";
+      const metaClass = className === "quick-task" ? "quick-task-meta" : "week-task-status";
+      const dueText = className === "quick-task" ? `${formatShortDate(task.dueDate)}・${getDueLabel(task.dueDate)}・` : "";
+
+      return `
+        <button
+          type="button"
+          class="${className} ${priorityClass(task.priority)} ${task.completed ? "completed-task" : ""}"
+          onclick='toggleTaskCompleted(${jsArgument(task.id)})'
+          aria-label="${escapeHtml(getSubjectName(task.subjectId))} / ${escapeHtml(task.title)}の完了状態を切り替え"
+        >
+          <span class="${titleClass}">・${escapeHtml(getSubjectName(task.subjectId))} / ${escapeHtml(task.title)}</span>
+          <span class="${metaClass}">${dueText}${task.completed ? "完了済み" : "未完了"}</span>
+        </button>
+      `;
+    }
+
+    function renderTodayFocus() {
+      const title = document.getElementById("taskFocusTitle");
+      const list = document.getElementById("todayFocusList");
+      const todayTasks = getTasksForDate(todayString);
+      const focusTasks = todayTasks.length
+        ? todayTasks
+        : sortTasksForDisplay(tasks.filter(task => !task.completed && task.dueDate > todayString)).slice(0, 3);
+
+      title.textContent = todayTasks.length ? "今日やること" : "期限が近い課題";
+
+      if (focusTasks.length === 0) {
+        list.innerHTML = "<p class='success-text'>近い締切の未完了課題はありません。</p>";
+        return;
+      }
+
+      list.innerHTML = focusTasks.map(task => renderTaskToggleButton(task, "quick-task")).join("");
+    }
+
+    function renderSevenDayTasks() {
+      const list = document.getElementById("sevenDayTaskList");
+      let html = "";
+
+      for (let offset = 0; offset < 7; offset++) {
+        const dateString = addDaysToDateString(todayString, offset);
+        const dayTasks = getTasksForDate(dateString);
+        const body = dayTasks.length
+          ? dayTasks.map(task => renderTaskToggleButton(task, "week-task")).join("")
+          : "<p class='week-empty'>・課題なし</p>";
+
+        html += `
+          <div class="week-day ${offset === 0 ? "today" : ""}">
+            <div class="week-day-header">
+              <span>${formatShortDate(dateString)}</span>
+              ${offset === 0 ? "<span>今日</span>" : ""}
+            </div>
+            <div class="week-day-body">${body}</div>
+          </div>
+        `;
+      }
+
+      list.innerHTML = html;
     }
 
     function dueBadgeClass(dueDate) {
@@ -1432,14 +1823,109 @@
       `).join("");
     }
 
+    function renderCalendarGridFor(year, month) {
+      const monthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
+      const firstDay = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const monthTasks = tasks
+        .filter(task => task.dueDate.startsWith(monthKey))
+        .sort((a, b) => {
+          if (a.completed !== b.completed) return a.completed ? 1 : -1;
+          return a.dueDate.localeCompare(b.dueDate);
+        });
+      const unfinished = monthTasks.filter(task => !task.completed);
+      const tasksByDate = {};
+
+      monthTasks.forEach(task => {
+        tasksByDate[task.dueDate] = tasksByDate[task.dueDate] || [];
+        tasksByDate[task.dueDate].push(task);
+      });
+
+      let html = weekdays.map((day, index) => (
+        `<div class="weekday ${index === 0 ? "sun" : ""} ${index === 6 ? "sat" : ""}">${day}</div>`
+      )).join("");
+
+      for (let i = 0; i < firstDay; i++) {
+        html += "<div class='calendar-day empty'></div>";
+      }
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateString = buildDateString(year, month, day);
+        const dayTasks = tasksByDate[dateString] || [];
+        const taskButtons = sortTasksForDisplay(dayTasks)
+          .map(task => `
+            <button
+              type="button"
+              class="calendar-task ${priorityClass(task.priority)} ${task.completed ? "completed-task" : ""}"
+              onclick='toggleTaskCompleted(${jsArgument(task.id)})'
+              aria-label="${escapeHtml(task.title)}の完了状態を切り替え"
+            >
+              <span class="calendar-task-title">${task.completed ? "✓ " : ""}${escapeHtml(getSubjectName(task.subjectId))} / ${escapeHtml(task.title)}</span>
+              <span class="calendar-task-meta">優先度 ${priorityLabel(task.priority)}${task.completed ? "・完了" : ""}</span>
+            </button>
+          `).join("");
+
+        html += `
+          <div class="calendar-day ${dateString === todayString ? "today" : ""}">
+            <div class="date-number">
+              <span>${day}</span>
+              ${dateString === todayString ? "<span class='today-label'>今日</span>" : ""}
+            </div>
+            ${taskButtons}
+          </div>
+        `;
+      }
+
+      return { html, monthTasks, unfinished };
+    }
+
+    function toggleMobileCalendar() {
+      isMobileCalendarOpen = !isMobileCalendarOpen;
+      const panel = document.getElementById("mobileCalendarPanel");
+      const button = document.getElementById("mobileCalendarToggle");
+      panel.classList.toggle("hidden", !isMobileCalendarOpen);
+      panel.setAttribute("aria-hidden", String(!isMobileCalendarOpen));
+      button.textContent = isMobileCalendarOpen ? "月カレンダーを閉じる" : "月カレンダーを見る";
+      if (isMobileCalendarOpen) renderMobileCalendar();
+    }
+
+    function moveMobileCalendarMonth(offset) {
+      if (offset === 0) {
+        visibleMobileCalendarYear = new Date().getFullYear();
+        visibleMobileCalendarMonth = new Date().getMonth();
+      } else {
+        const next = new Date(visibleMobileCalendarYear, visibleMobileCalendarMonth + offset, 1);
+        visibleMobileCalendarYear = next.getFullYear();
+        visibleMobileCalendarMonth = next.getMonth();
+      }
+
+      renderMobileCalendar();
+    }
+
+    function renderMobileCalendar() {
+      const title = document.getElementById("mobileCalendarTitle");
+      const grid = document.getElementById("mobileCalendarGrid");
+      if (!title || !grid) return;
+
+      const { html, monthTasks, unfinished } = renderCalendarGridFor(visibleMobileCalendarYear, visibleMobileCalendarMonth);
+      title.textContent = `${visibleMobileCalendarYear}年 ${visibleMobileCalendarMonth + 1}月`;
+      document.getElementById("mobileCalendarMonthCount").textContent = `${monthTasks.length}件`;
+      document.getElementById("mobileCalendarMonthUnfinished").textContent = `${unfinished.length}件`;
+      document.getElementById("mobileCalendarMonthOverdue").textContent = "0件";
+      grid.innerHTML = html;
+    }
+
     function renderAll() {
       removeExpiredTasks();
       renderSubjectManager();
       renderTemplateManager();
       renderSubjectOptions();
       renderTemplateOptions();
+      renderTodayFocus();
+      renderSevenDayTasks();
       renderTasks();
       renderCalendar();
+      renderMobileCalendar();
     }
 
     resetTaskForm();
