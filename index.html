@@ -826,6 +826,29 @@
       margin-bottom: 6px;
     }
 
+    @media (min-width: 601px) {
+      .quick-task-list,
+      .week-list {
+        display: flex;
+        gap: 12px;
+        overflow-x: auto;
+        padding-bottom: 6px;
+        scroll-snap-type: x proximity;
+      }
+
+      .quick-task {
+        flex: 0 0 280px;
+        min-width: 280px;
+        scroll-snap-align: start;
+      }
+
+      .week-day {
+        flex: 0 0 240px;
+        min-width: 240px;
+        scroll-snap-align: start;
+      }
+    }
+
     @media (max-width: 600px) {
       header {
         padding: 16px 14px;
@@ -945,6 +968,20 @@
 
       .task-form-panel .form-title-row h3 {
         font-size: 17px;
+      }
+
+      .quick-task-list,
+      .week-list {
+        display: grid;
+        overflow-x: visible;
+        padding-bottom: 0;
+      }
+
+      .quick-task,
+      .week-day {
+        flex: initial;
+        min-width: 0;
+        width: 100%;
       }
 
       .quick-task-list:not(.expanded) .quick-task-extra {
