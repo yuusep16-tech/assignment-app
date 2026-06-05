@@ -1325,6 +1325,7 @@
       getDocs,
       getFirestore,
       setDoc,
+      updateDoc,
       writeBatch
     } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
@@ -1393,14 +1394,25 @@
             throw error;
           }
         },
-        async saveTask(uid, task) {
+        async createTask(uid, task) {
           const cleaned = cleanTask(task);
           try {
-            await setDoc(taskDocument(uid, cleaned.id), cleaned, { merge: true });
-            console.log("Firestore task saved", { uid, taskId: cleaned.id, path: `users/${uid}/tasks/${cleaned.id}`, task: cleaned });
+            await setDoc(taskDocument(uid, cleaned.id), cleaned);
+            console.log("Firestore task created", { uid, taskId: cleaned.id, path: `users/${uid}/tasks/${cleaned.id}`, task: cleaned });
             return cleaned;
           } catch (error) {
-            console.error("Firestore task save failed", { uid, taskId: cleaned.id, path: `users/${uid}/tasks/${cleaned.id}`, task: cleaned, error });
+            console.error("Firestore task create failed", { uid, taskId: cleaned.id, path: `users/${uid}/tasks/${cleaned.id}`, task: cleaned, error });
+            throw error;
+          }
+        },
+        async updateTask(uid, task) {
+          const cleaned = cleanTask(task);
+          try {
+            await updateDoc(taskDocument(uid, cleaned.id), cleaned);
+            console.log("Firestore task updated", { uid, taskId: cleaned.id, path: `users/${uid}/tasks/${cleaned.id}`, task: cleaned });
+            return cleaned;
+          } catch (error) {
+            console.error("Firestore task update failed", { uid, taskId: cleaned.id, path: `users/${uid}/tasks/${cleaned.id}`, task: cleaned, error });
             throw error;
           }
         },
@@ -1737,13 +1749,18 @@
       });
     }
 
-    async function saveTaskToCloud(task) {
+    async function saveTaskToCloud(task, action = "update") {
       if (!currentUser || !window.firebaseCloud) throw new Error("ログインしてください。");
       const uid = currentUser.uid;
       if (!uid) throw new Error("ログイン中ユーザーのUIDを取得できません。");
       const cloudTask = enrichTaskForCloud(task);
-      console.log("Saving task to Firestore", { uid, taskId: cloudTask.id, path: `users/${uid}/tasks/${cloudTask.id}`, task: cloudTask });
-      const savedTask = await window.firebaseCloud.saveTask(uid, cloudTask);
+      const path = `users/${uid}/tasks/${cloudTask.id}`;
+      console.log("Saving task to Firestore", { uid, action, taskId: cloudTask.id, path, task: cloudTask });
+
+      const savedTask = action === "create"
+        ? await window.firebaseCloud.createTask(uid, cloudTask)
+        : await window.firebaseCloud.updateTask(uid, cloudTask);
+
       cloudStatusMessage = `Firestoreへ保存しました。UID: ${uid}`;
       return normalizeTask(savedTask || cloudTask);
     }
@@ -2180,7 +2197,7 @@
       };
 
       try {
-        const cloudTask = await saveTaskToCloud(task);
+        const cloudTask = await saveTaskToCloud(task, editingTaskId ? "edit" : "create");
         console.log("Task form Firestore save completed", { uid: currentUser?.uid, taskId: cloudTask.id, task: cloudTask });
         if (editingTaskId) {
           tasks = tasks.map(item => item.id === editingTaskId ? cloudTask : item);
@@ -2257,7 +2274,7 @@
       console.log("Task completion toggle started", { uid: currentUser?.uid, taskId: id, completed: updatedTask.completed });
 
       try {
-        const cloudTask = await saveTaskToCloud(updatedTask);
+        const cloudTask = await saveTaskToCloud(updatedTask, "complete");
         console.log("Task completion Firestore save completed", { uid: currentUser?.uid, taskId: id, task: cloudTask });
         tasks = tasks.map(task => task.id === id ? cloudTask : task);
         saveAll();
@@ -2823,7 +2840,7 @@
       });
 
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=12", { updateViaCache: "none" })
+        navigator.serviceWorker.register("./service-worker.js?v=13", { updateViaCache: "none" })
           .then(registration => registration.update())
           .catch(error => console.warn("Service Worker registration failed:", error));
       });
