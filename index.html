@@ -1354,17 +1354,21 @@
       }
 
       function cleanTask(task) {
+        const now = Date.now();
+        const subject = String(task.subject || task.subjectName || "");
         return {
           id: String(task.id),
+          subject,
           subjectId: String(task.subjectId || ""),
-          subjectName: String(task.subjectName || ""),
+          subjectName: subject,
           subjectDueDay: Number.isFinite(Number(task.subjectDueDay)) ? Number(task.subjectDueDay) : null,
           title: String(task.title || ""),
           dueDate: String(task.dueDate || ""),
           priority: String(task.priority || "middle"),
           memo: String(task.memo || ""),
           completed: Boolean(task.completed),
-          updatedAt: Number(task.updatedAt) || Date.now()
+          createdAt: Number(task.createdAt) || now,
+          updatedAt: Number(task.updatedAt) || now
         };
       }
 
@@ -1379,33 +1383,60 @@
           return signOut(auth);
         },
         async loadTasks(uid) {
-          const snapshot = await getDocs(taskCollection(uid));
-          return snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+          try {
+            const snapshot = await getDocs(taskCollection(uid));
+            return snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+          } catch (error) {
+            console.error("Firestore tasks load failed", { uid, path: `users/${uid}/tasks`, error });
+            throw error;
+          }
         },
         async saveTask(uid, task) {
           const cleaned = cleanTask(task);
-          await setDoc(taskDocument(uid, cleaned.id), cleaned, { merge: true });
+          try {
+            await setDoc(taskDocument(uid, cleaned.id), cleaned, { merge: true });
+            return cleaned;
+          } catch (error) {
+            console.error("Firestore task save failed", { uid, taskId: cleaned.id, path: `users/${uid}/tasks/${cleaned.id}`, task: cleaned, error });
+            throw error;
+          }
         },
         async saveTasks(uid, tasks) {
           const cleanedTasks = tasks.map(cleanTask);
-          for (let index = 0; index < cleanedTasks.length; index += 400) {
-            const batch = writeBatch(db);
-            cleanedTasks.slice(index, index + 400).forEach(task => {
-              batch.set(taskDocument(uid, task.id), task, { merge: true });
-            });
-            await batch.commit();
+          try {
+            for (let index = 0; index < cleanedTasks.length; index += 400) {
+              const batch = writeBatch(db);
+              cleanedTasks.slice(index, index + 400).forEach(task => {
+                batch.set(taskDocument(uid, task.id), task, { merge: true });
+              });
+              await batch.commit();
+            }
+            return cleanedTasks;
+          } catch (error) {
+            console.error("Firestore tasks batch save failed", { uid, path: `users/${uid}/tasks`, tasks: cleanedTasks, error });
+            throw error;
           }
         },
         async deleteTask(uid, taskId) {
-          await deleteDoc(taskDocument(uid, taskId));
+          try {
+            await deleteDoc(taskDocument(uid, taskId));
+          } catch (error) {
+            console.error("Firestore task delete failed", { uid, taskId, path: `users/${uid}/tasks/${taskId}`, error });
+            throw error;
+          }
         },
         async deleteTasks(uid, taskIds) {
-          for (let index = 0; index < taskIds.length; index += 400) {
-            const batch = writeBatch(db);
-            taskIds.slice(index, index + 400).forEach(taskId => {
-              batch.delete(taskDocument(uid, taskId));
-            });
-            await batch.commit();
+          try {
+            for (let index = 0; index < taskIds.length; index += 400) {
+              const batch = writeBatch(db);
+              taskIds.slice(index, index + 400).forEach(taskId => {
+                batch.delete(taskDocument(uid, taskId));
+              });
+              await batch.commit();
+            }
+          } catch (error) {
+            console.error("Firestore tasks batch delete failed", { uid, taskIds, path: `users/${uid}/tasks`, error });
+            throw error;
           }
         }
       };
@@ -1471,6 +1502,7 @@
       });
 
       window.addEventListener("firebaseCloudError", event => {
+        console.error("Firebase SDK initialization failed", event.detail);
         isAuthReady = true;
         isCloudReady = false;
         isCloudDataReady = false;
@@ -1552,6 +1584,7 @@
         saveAll();
         resetTaskForm();
       } catch (error) {
+        console.error("Firestore signed-in task load failed", { uid: user.uid, error });
         tasks = [];
         isCloudDataReady = false;
         cloudErrorMessage = `Firestoreに接続できませんでした: ${error.message || error}`;
@@ -1654,6 +1687,7 @@
       try {
         await window.firebaseCloud.signInWithGoogle();
       } catch (error) {
+        console.error("Google sign-in failed", error);
         if (error.code !== "auth/popup-closed-by-user" && error.code !== "auth/cancelled-popup-request") {
           cloudErrorMessage = `Googleログインに失敗しました: ${error.message || error}`;
           alert(cloudErrorMessage);
@@ -1672,6 +1706,7 @@
       try {
         await window.firebaseCloud.signOutUser();
       } catch (error) {
+        console.error("Sign-out failed", error);
         cloudErrorMessage = `ログアウトに失敗しました: ${error.message || error}`;
         alert(cloudErrorMessage);
       } finally {
@@ -1681,27 +1716,33 @@
     }
 
     function enrichTaskForCloud(task) {
-      const subject = subjects.find(item => item.id === task.subjectId);
+      const now = Date.now();
+      const registeredSubject = subjects.find(item => item.id === task.subjectId);
+      const subjectName = registeredSubject?.name || task.subject || task.subjectName || "";
       return normalizeTask({
         ...task,
-        subjectName: subject?.name || task.subjectName || "",
-        subjectDueDay: Number.isFinite(Number(subject?.dueDay)) ? Number(subject.dueDay) : task.subjectDueDay,
-        updatedAt: Number(task.updatedAt) || Date.now()
+        subject: subjectName,
+        subjectName,
+        subjectDueDay: Number.isFinite(Number(registeredSubject?.dueDay)) ? Number(registeredSubject.dueDay) : task.subjectDueDay,
+        createdAt: Number(task.createdAt) || now,
+        updatedAt: Number(task.updatedAt) || now
       });
     }
 
     async function saveTaskToCloud(task) {
       if (!currentUser || !window.firebaseCloud) throw new Error("ログインしてください。");
+      const uid = currentUser.uid;
       const cloudTask = enrichTaskForCloud(task);
-      await window.firebaseCloud.saveTask(currentUser.uid, cloudTask);
-      cloudStatusMessage = "Firestoreへ保存しました。";
-      return cloudTask;
+      const savedTask = await window.firebaseCloud.saveTask(uid, cloudTask);
+      cloudStatusMessage = `Firestoreへ保存しました。UID: ${uid}`;
+      return normalizeTask(savedTask || cloudTask);
     }
 
     async function deleteTaskFromCloud(taskId) {
       if (!currentUser || !window.firebaseCloud) throw new Error("ログインしてください。");
-      await window.firebaseCloud.deleteTask(currentUser.uid, taskId);
-      cloudStatusMessage = "Firestoreから削除しました。";
+      const uid = currentUser.uid;
+      await window.firebaseCloud.deleteTask(uid, taskId);
+      cloudStatusMessage = `Firestoreから削除しました。UID: ${uid}`;
     }
 
     async function deleteTasksFromCloud(taskIds) {
@@ -1711,6 +1752,7 @@
         cloudStatusMessage = "期限切れ課題をFirestoreから削除しました。";
         updateAuthUi();
       } catch (error) {
+        console.error("Expired task delete sync failed", { uid: currentUser?.uid, taskIds, error });
         cloudErrorMessage = `期限切れ課題のクラウド削除に失敗しました: ${error.message || error}`;
         updateAuthUi();
       }
@@ -1776,7 +1818,7 @@
     }
 
     function normalizeTask(task) {
-      const oldSubjectName = String(task.subject || "").trim();
+      const oldSubjectName = String(task.subject || task.subjectName || "").trim();
       const matchedSubject = oldSubjectName
         ? subjects.find(subject => subject.name === oldSubjectName)
         : null;
@@ -1795,6 +1837,7 @@
         priority: normalizePriority(task.priority),
         memo: String(task.memo || "").trim(),
         completed: Boolean(task.completed ?? false),
+        createdAt: Number(task.createdAt) || 0,
         updatedAt: Number(task.updatedAt) || 0
       };
     }
@@ -2106,17 +2149,21 @@
       const existingTask = editingTaskId
         ? tasks.find(item => item.id === editingTaskId)
         : null;
+      const selectedSubject = subjects.find(item => item.id === subjectId);
+      const now = Date.now();
       const task = {
         id: editingTaskId || createId(),
         subjectId,
+        subject: selectedSubject?.name || existingTask?.subject || existingTask?.subjectName || "",
         title,
         dueDate: document.getElementById("taskDeadline").value,
         priority: document.getElementById("taskPriority").value,
         memo: document.getElementById("taskMemo").value.trim(),
         completed: existingTask?.completed ?? false,
-        subjectName: existingTask?.subjectName || "",
-        subjectDueDay: existingTask?.subjectDueDay ?? null,
-        updatedAt: Date.now()
+        subjectName: selectedSubject?.name || existingTask?.subjectName || "",
+        subjectDueDay: Number.isFinite(Number(selectedSubject?.dueDay)) ? Number(selectedSubject.dueDay) : existingTask?.subjectDueDay ?? null,
+        createdAt: existingTask?.createdAt || now,
+        updatedAt: now
       };
 
       try {
@@ -2131,6 +2178,7 @@
         resetTaskForm();
         renderAll();
       } catch (error) {
+        console.error("Task form save failed", { uid: currentUser?.uid, task, error });
         cloudErrorMessage = `Firestoreへの保存に失敗しました: ${error.message || error}`;
         alert(cloudErrorMessage);
         updateAuthUi();
@@ -2204,6 +2252,7 @@
         renderMobileCalendar();
         updateAuthUi();
       } catch (error) {
+        console.error("Task completion sync failed", { uid: currentUser?.uid, taskId: id, task: updatedTask, error });
         cloudErrorMessage = `Firestoreへの保存に失敗しました: ${error.message || error}`;
         alert(cloudErrorMessage);
         updateAuthUi();
@@ -2227,6 +2276,7 @@
         renderAll();
         updateAuthUi();
       } catch (error) {
+        console.error("Task delete sync failed", { uid: currentUser?.uid, taskId: id, error });
         cloudErrorMessage = `Firestoreからの削除に失敗しました: ${error.message || error}`;
         alert(cloudErrorMessage);
         updateAuthUi();
@@ -2756,7 +2806,7 @@
       });
 
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=9", { updateViaCache: "none" })
+        navigator.serviceWorker.register("./service-worker.js?v=10", { updateViaCache: "none" })
           .then(registration => registration.update())
           .catch(error => console.warn("Service Worker registration failed:", error));
       });
