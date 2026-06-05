@@ -1385,7 +1385,9 @@
         async loadTasks(uid) {
           try {
             const snapshot = await getDocs(taskCollection(uid));
-            return snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+            const loadedTasks = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+            console.log("Firestore tasks loaded", { uid, path: `users/${uid}/tasks`, count: loadedTasks.length, tasks: loadedTasks });
+            return loadedTasks;
           } catch (error) {
             console.error("Firestore tasks load failed", { uid, path: `users/${uid}/tasks`, error });
             throw error;
@@ -1395,6 +1397,7 @@
           const cleaned = cleanTask(task);
           try {
             await setDoc(taskDocument(uid, cleaned.id), cleaned, { merge: true });
+            console.log("Firestore task saved", { uid, taskId: cleaned.id, path: `users/${uid}/tasks/${cleaned.id}`, task: cleaned });
             return cleaned;
           } catch (error) {
             console.error("Firestore task save failed", { uid, taskId: cleaned.id, path: `users/${uid}/tasks/${cleaned.id}`, task: cleaned, error });
@@ -1411,6 +1414,7 @@
               });
               await batch.commit();
             }
+            console.log("Firestore tasks batch saved", { uid, path: `users/${uid}/tasks`, count: cleanedTasks.length, tasks: cleanedTasks });
             return cleanedTasks;
           } catch (error) {
             console.error("Firestore tasks batch save failed", { uid, path: `users/${uid}/tasks`, tasks: cleanedTasks, error });
@@ -1420,6 +1424,7 @@
         async deleteTask(uid, taskId) {
           try {
             await deleteDoc(taskDocument(uid, taskId));
+            console.log("Firestore task deleted", { uid, taskId, path: `users/${uid}/tasks/${taskId}` });
           } catch (error) {
             console.error("Firestore task delete failed", { uid, taskId, path: `users/${uid}/tasks/${taskId}`, error });
             throw error;
@@ -1434,6 +1439,7 @@
               });
               await batch.commit();
             }
+            console.log("Firestore tasks batch deleted", { uid, taskIds, path: `users/${uid}/tasks` });
           } catch (error) {
             console.error("Firestore tasks batch delete failed", { uid, taskIds, path: `users/${uid}/tasks`, error });
             throw error;
@@ -1535,6 +1541,7 @@
         isAuthReady = true;
         currentUser = user;
         cloudErrorMessage = "";
+        console.log("Firebase auth state changed", user ? { uid: user.uid, email: user.email } : { uid: null });
 
         if (!user) {
           tasks = [];
@@ -1579,6 +1586,7 @@
         }
 
         tasks = nextTasks;
+        console.log("Applied Firestore tasks to app state", { uid: user.uid, count: tasks.length, tasks });
         isCloudDataReady = true;
         removeExpiredTasks();
         saveAll();
@@ -1732,7 +1740,9 @@
     async function saveTaskToCloud(task) {
       if (!currentUser || !window.firebaseCloud) throw new Error("ログインしてください。");
       const uid = currentUser.uid;
+      if (!uid) throw new Error("ログイン中ユーザーのUIDを取得できません。");
       const cloudTask = enrichTaskForCloud(task);
+      console.log("Saving task to Firestore", { uid, taskId: cloudTask.id, path: `users/${uid}/tasks/${cloudTask.id}`, task: cloudTask });
       const savedTask = await window.firebaseCloud.saveTask(uid, cloudTask);
       cloudStatusMessage = `Firestoreへ保存しました。UID: ${uid}`;
       return normalizeTask(savedTask || cloudTask);
@@ -1741,6 +1751,8 @@
     async function deleteTaskFromCloud(taskId) {
       if (!currentUser || !window.firebaseCloud) throw new Error("ログインしてください。");
       const uid = currentUser.uid;
+      if (!uid) throw new Error("ログイン中ユーザーのUIDを取得できません。");
+      console.log("Deleting task from Firestore", { uid, taskId, path: `users/${uid}/tasks/${taskId}` });
       await window.firebaseCloud.deleteTask(uid, taskId);
       cloudStatusMessage = `Firestoreから削除しました。UID: ${uid}`;
     }
@@ -2149,6 +2161,7 @@
       const existingTask = editingTaskId
         ? tasks.find(item => item.id === editingTaskId)
         : null;
+      console.log("Task form submit started", { uid: currentUser?.uid, mode: editingTaskId ? "edit" : "add", editingTaskId });
       const selectedSubject = subjects.find(item => item.id === subjectId);
       const now = Date.now();
       const task = {
@@ -2168,6 +2181,7 @@
 
       try {
         const cloudTask = await saveTaskToCloud(task);
+        console.log("Task form Firestore save completed", { uid: currentUser?.uid, taskId: cloudTask.id, task: cloudTask });
         if (editingTaskId) {
           tasks = tasks.map(item => item.id === editingTaskId ? cloudTask : item);
         } else {
@@ -2240,9 +2254,11 @@
         completed: !targetTask.completed,
         updatedAt: Date.now()
       };
+      console.log("Task completion toggle started", { uid: currentUser?.uid, taskId: id, completed: updatedTask.completed });
 
       try {
         const cloudTask = await saveTaskToCloud(updatedTask);
+        console.log("Task completion Firestore save completed", { uid: currentUser?.uid, taskId: id, task: cloudTask });
         tasks = tasks.map(task => task.id === id ? cloudTask : task);
         saveAll();
         renderTasks();
@@ -2270,6 +2286,7 @@
 
       try {
         await deleteTaskFromCloud(id);
+        console.log("Task delete Firestore completed", { uid: currentUser?.uid, taskId: id });
         tasks = tasks.filter(task => task.id !== id);
         if (editingTaskId === id) resetTaskForm();
         saveAll();
@@ -2806,7 +2823,7 @@
       });
 
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=10", { updateViaCache: "none" })
+        navigator.serviceWorker.register("./service-worker.js?v=12", { updateViaCache: "none" })
           .then(registration => registration.update())
           .catch(error => console.warn("Service Worker registration failed:", error));
       });
