@@ -382,6 +382,19 @@
       gap: 16px;
     }
 
+    .task-form-toggle {
+      display: none;
+      width: 100%;
+      min-height: 46px;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    .task-form-panel {
+      display: block;
+    }
+
     .task-focus-card {
       border-left: 5px solid var(--main);
     }
@@ -454,32 +467,69 @@
       font-weight: 700;
     }
 
+    .focus-more-button {
+      display: none;
+      width: 100%;
+      min-height: 42px;
+      margin-top: 10px;
+    }
+
     .week-list {
       display: grid;
-      gap: 14px;
+      gap: 10px;
     }
 
     .week-day {
       border: 1px solid var(--border);
       border-radius: 8px;
-      background: #f8fafc;
+      background: #ffffff;
       overflow: hidden;
     }
 
-    .week-day-header {
+    .week-day-toggle,
+    .week-day-empty-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 10px;
-      padding: 10px 12px;
+      width: 100%;
+      border: none;
       background: #eef2ff;
       color: #3730a3;
+      padding: 10px 12px;
+      text-align: left;
+      font: inherit;
       font-weight: 900;
     }
 
-    .week-day.today .week-day-header {
+    .week-day-toggle {
+      cursor: pointer;
+    }
+
+    .week-day-empty-row {
+      background: #f8fafc;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .week-day.today .week-day-toggle,
+    .week-day.today .week-day-empty-row {
       background: #dbeafe;
       color: var(--main-dark);
+    }
+
+    .week-day-count {
+      flex-shrink: 0;
+      color: inherit;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .week-toggle-indicator {
+      color: var(--muted);
+      flex-shrink: 0;
+      font-size: 12px;
+      font-weight: 900;
     }
 
     .week-day-body {
@@ -487,12 +537,6 @@
       gap: 8px;
       padding: 10px;
       background: #ffffff;
-    }
-
-    .week-empty {
-      margin: 0;
-      color: var(--muted);
-      font-weight: 700;
     }
 
     .mobile-calendar-card {
@@ -857,15 +901,15 @@
         font-size: 18px;
       }
 
-      .task-focus-card {
+      .task-form-card {
         order: 1;
       }
 
-      .weekly-card {
+      .task-focus-card {
         order: 2;
       }
 
-      .task-form-card {
+      .weekly-card {
         order: 3;
       }
 
@@ -882,15 +926,55 @@
         order: 6;
       }
 
-      .week-day-header,
+      .task-form-toggle {
+        display: flex;
+      }
+
+      .task-form-panel {
+        display: none;
+        margin-top: 12px;
+      }
+
+      .task-form-card.form-open .task-form-panel {
+        display: block;
+      }
+
+      .task-form-panel .form-title-row {
+        margin-bottom: 10px;
+      }
+
+      .task-form-panel .form-title-row h3 {
+        font-size: 17px;
+      }
+
+      .quick-task-list:not(.expanded) .quick-task-extra {
+        display: none;
+      }
+
+      .focus-more-button {
+        display: block;
+      }
+
+      .week-day-toggle,
+      .week-day-empty-row,
       .week-day-body {
         padding-left: 10px;
         padding-right: 10px;
       }
 
+      .week-day-empty-row {
+        min-height: 38px;
+        padding-top: 8px;
+        padding-bottom: 8px;
+      }
+
+      .week-day.collapsed .week-day-body {
+        display: none;
+      }
+
       .quick-task,
       .week-task {
-        min-height: 50px;
+        min-height: 48px;
       }
 
       .calendar-controls {
@@ -936,7 +1020,7 @@
     <section id="taskPage" class="active">
       <div class="task-dashboard">
         <div class="card task-focus-card">
-          <h2 id="taskFocusTitle">今日やること</h2>
+          <h2 id="taskFocusTitle">期限が近い課題</h2>
           <div id="todayFocusList" class="quick-task-list"></div>
         </div>
 
@@ -945,24 +1029,27 @@
           <div id="sevenDayTaskList" class="week-list"></div>
         </div>
 
-        <div class="card task-form-card">
-          <div class="form-title-row">
-            <h3 id="taskFormTitle">課題追加</h3>
-            <button id="cancelEditButton" class="secondary hidden" type="button" onclick="cancelEdit()">編集をやめる</button>
+        <div id="taskFormCard" class="card task-form-card">
+          <button id="taskFormToggle" class="primary task-form-toggle" type="button" onclick="toggleTaskFormPanel()">＋ 課題を追加</button>
+          <div id="taskFormPanel" class="task-form-panel" aria-hidden="false">
+            <div class="form-title-row">
+              <h3 id="taskFormTitle">課題追加</h3>
+              <button id="cancelEditButton" class="secondary hidden" type="button" onclick="cancelEdit()">編集をやめる</button>
+            </div>
+            <form id="taskForm" onsubmit="saveTask(event)">
+              <select id="taskSubject" required onchange="handleSubjectChange()"></select>
+              <select id="taskTitleSelect" required onchange="handleTitleSelectChange()"></select>
+              <input id="taskTitleOther" class="hidden" type="text" placeholder="課題名を入力" />
+              <input id="taskDeadline" type="date" required />
+              <select id="taskPriority">
+                <option value="high">優先度：高</option>
+                <option value="middle">優先度：中</option>
+                <option value="low">優先度：低</option>
+              </select>
+              <textarea id="taskMemo" class="form-wide" placeholder="メモ 例: 第8回の内容"></textarea>
+              <button id="taskSubmitButton" class="primary" type="submit">追加</button>
+            </form>
           </div>
-          <form id="taskForm" onsubmit="saveTask(event)">
-            <select id="taskSubject" required onchange="handleSubjectChange()"></select>
-            <select id="taskTitleSelect" required onchange="handleTitleSelectChange()"></select>
-            <input id="taskTitleOther" class="hidden" type="text" placeholder="課題名を入力" />
-            <input id="taskDeadline" type="date" required />
-            <select id="taskPriority">
-              <option value="high">優先度：高</option>
-              <option value="middle">優先度：中</option>
-              <option value="low">優先度：低</option>
-            </select>
-            <textarea id="taskMemo" class="form-wide" placeholder="メモ 例: 第8回の内容"></textarea>
-            <button id="taskSubmitButton" class="primary" type="submit">追加</button>
-          </form>
         </div>
 
         <div class="card task-list-card">
@@ -1094,6 +1181,10 @@
     let visibleMobileCalendarYear = new Date().getFullYear();
     let visibleMobileCalendarMonth = new Date().getMonth();
     let isMobileCalendarOpen = false;
+    let isTaskFormOpen = false;
+    let isFocusExpanded = false;
+    let hasToggledWeekDay = false;
+    const openWeekDates = new Set();
 
     migrateOldData();
     removeExpiredTasks();
@@ -1416,6 +1507,34 @@
       return formatDateInput(nextDate);
     }
 
+
+    function updateTaskFormPanel() {
+      const card = document.getElementById("taskFormCard");
+      const panel = document.getElementById("taskFormPanel");
+      const button = document.getElementById("taskFormToggle");
+      if (!card || !panel || !button) return;
+
+      const isMobile = window.matchMedia ? window.matchMedia("(max-width: 600px)").matches : true;
+      card.classList.toggle("form-open", isTaskFormOpen);
+      panel.setAttribute("aria-hidden", String(isMobile && !isTaskFormOpen));
+      button.textContent = isTaskFormOpen ? "− 課題追加を閉じる" : "＋ 課題を追加";
+    }
+
+    function toggleTaskFormPanel() {
+      isTaskFormOpen = !isTaskFormOpen;
+      updateTaskFormPanel();
+    }
+
+    function openTaskFormPanel() {
+      isTaskFormOpen = true;
+      updateTaskFormPanel();
+    }
+
+    function closeTaskFormPanel() {
+      isTaskFormOpen = false;
+      updateTaskFormPanel();
+    }
+
     function saveTask(event) {
       event.preventDefault();
       removeExpiredTasks();
@@ -1473,7 +1592,8 @@
       document.getElementById("taskDeadline").value = task.dueDate;
       document.getElementById("taskPriority").value = task.priority;
       document.getElementById("taskMemo").value = task.memo;
-      document.getElementById("taskForm").scrollIntoView({ behavior: "smooth", block: "start" });
+      openTaskFormPanel();
+      document.getElementById("taskFormCard").scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
     function cancelEdit() {
@@ -1494,6 +1614,7 @@
       document.getElementById("taskDeadline").value = selectedSubject
         ? getNextDueDate(selectedSubject.dueDay)
         : todayString;
+      closeTaskFormPanel();
     }
 
     function toggleTaskCompleted(id) {
@@ -1600,40 +1721,75 @@
       return sortTasksForDisplay(tasks.filter(task => task.dueDate === dateString));
     }
 
-    function renderTaskToggleButton(task, className) {
+    function sortUpcomingTasks(list) {
+      return [...list].sort((a, b) => {
+        if (a.dueDate !== b.dueDate) return a.dueDate.localeCompare(b.dueDate);
+        if (a.completed !== b.completed) return a.completed ? 1 : -1;
+        const priorityOrder = { high: 0, middle: 1, low: 2 };
+        return priorityOrder[a.priority] - priorityOrder[b.priority];
+      });
+    }
+
+    function getUpcomingTasks() {
+      return sortUpcomingTasks(tasks.filter(task => task.dueDate >= todayString));
+    }
+
+    function renderTaskToggleButton(task, className, extraClass = "") {
       const titleClass = className === "quick-task" ? "quick-task-title" : "week-task-title";
       const metaClass = className === "quick-task" ? "quick-task-meta" : "week-task-status";
       const dueText = className === "quick-task" ? `${formatShortDate(task.dueDate)}・${getDueLabel(task.dueDate)}・` : "";
+      const statusText = task.completed ? "完了済み" : "未完了";
 
       return `
         <button
           type="button"
-          class="${className} ${priorityClass(task.priority)} ${task.completed ? "completed-task" : ""}"
+          class="${className} ${extraClass} ${priorityClass(task.priority)} ${task.completed ? "completed-task" : ""}"
           onclick='toggleTaskCompleted(${jsArgument(task.id)})'
           aria-label="${escapeHtml(getSubjectName(task.subjectId))} / ${escapeHtml(task.title)}の完了状態を切り替え"
         >
-          <span class="${titleClass}">・${escapeHtml(getSubjectName(task.subjectId))} / ${escapeHtml(task.title)}</span>
-          <span class="${metaClass}">${dueText}${task.completed ? "完了済み" : "未完了"}</span>
+          <span class="${titleClass}">${escapeHtml(getSubjectName(task.subjectId))} / ${escapeHtml(task.title)}</span>
+          <span class="${metaClass}">${dueText}${statusText}・優先度 ${priorityLabel(task.priority)}</span>
         </button>
       `;
+    }
+
+    function toggleFocusTasks() {
+      isFocusExpanded = !isFocusExpanded;
+      renderTodayFocus();
+    }
+
+    function toggleWeekDay(dateString) {
+      hasToggledWeekDay = true;
+      if (openWeekDates.has(dateString)) {
+        openWeekDates.delete(dateString);
+      } else {
+        openWeekDates.add(dateString);
+      }
+      renderSevenDayTasks();
     }
 
     function renderTodayFocus() {
       const title = document.getElementById("taskFocusTitle");
       const list = document.getElementById("todayFocusList");
-      const todayTasks = getTasksForDate(todayString);
-      const focusTasks = todayTasks.length
-        ? todayTasks
-        : sortTasksForDisplay(tasks.filter(task => !task.completed && task.dueDate > todayString)).slice(0, 3);
+      const focusTasks = getUpcomingTasks();
 
-      title.textContent = todayTasks.length ? "今日やること" : "期限が近い課題";
+      title.textContent = "期限が近い課題";
 
       if (focusTasks.length === 0) {
-        list.innerHTML = "<p class='success-text'>近い締切の未完了課題はありません。</p>";
+        list.classList.remove("expanded");
+        list.innerHTML = "<p class='success-text'>近い締切の課題はありません。</p>";
         return;
       }
 
-      list.innerHTML = focusTasks.map(task => renderTaskToggleButton(task, "quick-task")).join("");
+      list.classList.toggle("expanded", isFocusExpanded);
+      const taskHtml = focusTasks.map((task, index) => (
+        renderTaskToggleButton(task, "quick-task", index >= 3 ? "quick-task-extra" : "")
+      )).join("");
+      const moreButton = focusTasks.length > 3
+        ? `<button class="secondary focus-more-button" type="button" onclick="toggleFocusTasks()">${isFocusExpanded ? "少なく表示" : "もっと見る"}</button>`
+        : "";
+
+      list.innerHTML = taskHtml + moreButton;
     }
 
     function renderSevenDayTasks() {
@@ -1643,17 +1799,36 @@
       for (let offset = 0; offset < 7; offset++) {
         const dateString = addDaysToDateString(todayString, offset);
         const dayTasks = getTasksForDate(dateString);
-        const body = dayTasks.length
-          ? dayTasks.map(task => renderTaskToggleButton(task, "week-task")).join("")
-          : "<p class='week-empty'>・課題なし</p>";
+        const shouldAutoOpenToday = !hasToggledWeekDay && offset === 0 && dayTasks.length > 0;
+        const isOpen = dayTasks.length > 0 && (openWeekDates.has(dateString) || shouldAutoOpenToday);
+
+        if (dayTasks.length === 0) {
+          html += `
+            <div class="week-day no-tasks ${offset === 0 ? "today" : ""}">
+              <div class="week-day-empty-row">
+                <span>${formatShortDate(dateString)}</span>
+                <span>課題なし</span>
+              </div>
+            </div>
+          `;
+          continue;
+        }
 
         html += `
-          <div class="week-day ${offset === 0 ? "today" : ""}">
-            <div class="week-day-header">
+          <div class="week-day has-tasks ${isOpen ? "" : "collapsed"} ${offset === 0 ? "today" : ""}">
+            <button
+              type="button"
+              class="week-day-toggle"
+              onclick='toggleWeekDay(${jsArgument(dateString)})'
+              aria-expanded="${String(isOpen)}"
+            >
               <span>${formatShortDate(dateString)}</span>
-              ${offset === 0 ? "<span>今日</span>" : ""}
+              <span class="week-day-count">${dayTasks.length}件</span>
+              <span class="week-toggle-indicator">${isOpen ? "閉じる" : "開く"}</span>
+            </button>
+            <div class="week-day-body">
+              ${dayTasks.map(task => renderTaskToggleButton(task, "week-task")).join("")}
             </div>
-            <div class="week-day-body">${body}</div>
           </div>
         `;
       }
@@ -1926,6 +2101,7 @@
       renderTasks();
       renderCalendar();
       renderMobileCalendar();
+      updateTaskFormPanel();
     }
 
     resetTaskForm();
@@ -1941,7 +2117,7 @@
       });
 
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=6", { updateViaCache: "none" })
+        navigator.serviceWorker.register("./service-worker.js?v=7", { updateViaCache: "none" })
           .then(registration => registration.update())
           .catch(error => console.warn("Service Worker registration failed:", error));
       });
