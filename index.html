@@ -1941,7 +1941,7 @@
       });
 
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=5", { updateViaCache: "none" })
+        navigator.serviceWorker.register("./service-worker.js?v=6", { updateViaCache: "none" })
           .then(registration => registration.update())
           .catch(error => console.warn("Service Worker registration failed:", error));
       });

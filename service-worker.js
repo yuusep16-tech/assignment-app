@@ -1,4 +1,4 @@
-const CACHE_NAME = "assignment-calendar-pwa-v5";
+const CACHE_NAME = "assignment-app-v6";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -10,12 +10,13 @@ const APP_SHELL = [
 const HTML_FALLBACK = new URL("./index.html", self.location.href).toString();
 
 self.addEventListener("install", event => {
+  self.skipWaiting();
+
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => Promise.all(
         APP_SHELL.map(url => cache.add(new Request(new URL(url, self.location.href), { cache: "reload" })))
       ))
-      .then(() => self.skipWaiting())
   );
 });
 
@@ -27,7 +28,7 @@ self.addEventListener("activate", event => {
           .filter(cacheName => cacheName !== CACHE_NAME)
           .map(cacheName => caches.delete(cacheName))
       ))
-      .then(() => self.clients.claim())
+      .then(() => clients.claim())
   );
 });
 
@@ -37,18 +38,13 @@ self.addEventListener("fetch", event => {
   const requestUrl = new URL(event.request.url);
   if (requestUrl.origin !== self.location.origin) return;
 
-  if (shouldUseNetworkFirst(event.request)) {
+  if (isHtmlRequest(event.request)) {
     event.respondWith(networkFirst(event.request));
     return;
   }
 
   event.respondWith(staleWhileRevalidate(event.request));
 });
-
-function shouldUseNetworkFirst(request) {
-  return isHtmlRequest(request)
-    || ["script", "style", "manifest"].includes(request.destination);
-}
 
 function isHtmlRequest(request) {
   return request.mode === "navigate"
@@ -87,7 +83,7 @@ async function staleWhileRevalidate(request) {
   const cache = await caches.open(CACHE_NAME);
   const cachedResponse = await cache.match(request);
 
-  const networkResponsePromise = fetch(request)
+  const networkResponsePromise = fetchFresh(request)
     .then(response => {
       if (response.ok) {
         cache.put(request, response.clone());
