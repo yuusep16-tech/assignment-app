@@ -1354,6 +1354,22 @@
         return doc(db, "users", uid, "tasks", taskId);
       }
 
+      function subjectCollection(uid) {
+        return collection(db, "users", uid, "subjects");
+      }
+
+      function subjectDocument(uid, subjectId) {
+        return doc(db, "users", uid, "subjects", subjectId);
+      }
+
+      function templateCollection(uid) {
+        return collection(db, "users", uid, "taskTemplates");
+      }
+
+      function templateDocument(uid, templateId) {
+        return doc(db, "users", uid, "taskTemplates", templateId);
+      }
+
       function cleanTask(task) {
         const now = Date.now();
         const subject = String(task.subject || task.subjectName || "");
@@ -1370,6 +1386,27 @@
           completed: Boolean(task.completed),
           createdAt: Number(task.createdAt) || now,
           updatedAt: Number(task.updatedAt) || now
+        };
+      }
+
+      function cleanSubject(subject) {
+        const now = Date.now();
+        return {
+          id: String(subject.id),
+          name: String(subject.name || "").trim(),
+          dueDay: Number(subject.dueDay),
+          createdAt: Number(subject.createdAt) || now,
+          updatedAt: Number(subject.updatedAt) || now
+        };
+      }
+
+      function cleanTemplate(template) {
+        const now = Date.now();
+        return {
+          id: String(template.id),
+          name: String(template.name || "").trim(),
+          createdAt: Number(template.createdAt) || now,
+          updatedAt: Number(template.updatedAt) || now
         };
       }
 
@@ -1391,6 +1428,102 @@
             return loadedTasks;
           } catch (error) {
             console.error("Firestore tasks load failed", { uid, path: `users/${uid}/tasks`, error });
+            throw error;
+          }
+        },
+        async loadSubjects(uid) {
+          try {
+            const snapshot = await getDocs(subjectCollection(uid));
+            const loadedSubjects = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+            console.log("Firestore subjects loaded", { uid, path: `users/${uid}/subjects`, count: loadedSubjects.length, subjects: loadedSubjects });
+            return loadedSubjects;
+          } catch (error) {
+            console.error("Firestore subjects load failed", { uid, path: `users/${uid}/subjects`, error });
+            throw error;
+          }
+        },
+        async loadTemplates(uid) {
+          try {
+            const snapshot = await getDocs(templateCollection(uid));
+            const loadedTemplates = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+            console.log("Firestore task templates loaded", { uid, path: `users/${uid}/taskTemplates`, count: loadedTemplates.length, templates: loadedTemplates });
+            return loadedTemplates;
+          } catch (error) {
+            console.error("Firestore task templates load failed", { uid, path: `users/${uid}/taskTemplates`, error });
+            throw error;
+          }
+        },
+        async saveSubject(uid, subject) {
+          const cleaned = cleanSubject(subject);
+          try {
+            await setDoc(subjectDocument(uid, cleaned.id), cleaned, { merge: true });
+            console.log("Firestore subject saved", { uid, subjectId: cleaned.id, path: `users/${uid}/subjects/${cleaned.id}`, subject: cleaned });
+            return cleaned;
+          } catch (error) {
+            console.error("Firestore subject save failed", { uid, subjectId: cleaned.id, path: `users/${uid}/subjects/${cleaned.id}`, subject: cleaned, error });
+            throw error;
+          }
+        },
+        async saveSubjects(uid, subjects) {
+          const cleanedSubjects = subjects.map(cleanSubject);
+          try {
+            for (let index = 0; index < cleanedSubjects.length; index += 400) {
+              const batch = writeBatch(db);
+              cleanedSubjects.slice(index, index + 400).forEach(subject => {
+                batch.set(subjectDocument(uid, subject.id), subject, { merge: true });
+              });
+              await batch.commit();
+            }
+            console.log("Firestore subjects batch saved", { uid, path: `users/${uid}/subjects`, count: cleanedSubjects.length, subjects: cleanedSubjects });
+            return cleanedSubjects;
+          } catch (error) {
+            console.error("Firestore subjects batch save failed", { uid, path: `users/${uid}/subjects`, subjects: cleanedSubjects, error });
+            throw error;
+          }
+        },
+        async deleteSubject(uid, subjectId) {
+          try {
+            await deleteDoc(subjectDocument(uid, subjectId));
+            console.log("Firestore subject deleted", { uid, subjectId, path: `users/${uid}/subjects/${subjectId}` });
+          } catch (error) {
+            console.error("Firestore subject delete failed", { uid, subjectId, path: `users/${uid}/subjects/${subjectId}`, error });
+            throw error;
+          }
+        },
+        async saveTemplate(uid, template) {
+          const cleaned = cleanTemplate(template);
+          try {
+            await setDoc(templateDocument(uid, cleaned.id), cleaned, { merge: true });
+            console.log("Firestore task template saved", { uid, templateId: cleaned.id, path: `users/${uid}/taskTemplates/${cleaned.id}`, template: cleaned });
+            return cleaned;
+          } catch (error) {
+            console.error("Firestore task template save failed", { uid, templateId: cleaned.id, path: `users/${uid}/taskTemplates/${cleaned.id}`, template: cleaned, error });
+            throw error;
+          }
+        },
+        async saveTemplates(uid, templates) {
+          const cleanedTemplates = templates.map(cleanTemplate);
+          try {
+            for (let index = 0; index < cleanedTemplates.length; index += 400) {
+              const batch = writeBatch(db);
+              cleanedTemplates.slice(index, index + 400).forEach(template => {
+                batch.set(templateDocument(uid, template.id), template, { merge: true });
+              });
+              await batch.commit();
+            }
+            console.log("Firestore task templates batch saved", { uid, path: `users/${uid}/taskTemplates`, count: cleanedTemplates.length, templates: cleanedTemplates });
+            return cleanedTemplates;
+          } catch (error) {
+            console.error("Firestore task templates batch save failed", { uid, path: `users/${uid}/taskTemplates`, templates: cleanedTemplates, error });
+            throw error;
+          }
+        },
+        async deleteTemplate(uid, templateId) {
+          try {
+            await deleteDoc(templateDocument(uid, templateId));
+            console.log("Firestore task template deleted", { uid, templateId, path: `users/${uid}/taskTemplates/${templateId}` });
+          } catch (error) {
+            console.error("Firestore task template delete failed", { uid, templateId, path: `users/${uid}/taskTemplates/${templateId}`, error });
             throw error;
           }
         },
@@ -1574,38 +1707,80 @@
     async function loadSignedInTasks(user) {
       isCloudBusy = true;
       isCloudDataReady = false;
-      cloudStatusMessage = "Firestoreから課題を読み込んでいます。";
+      cloudStatusMessage = "Firestoreから課題・教科・テンプレートを読み込んでいます。";
       updateAuthUi();
       renderAll();
 
       try {
-        const remoteTasks = (await window.firebaseCloud.loadTasks(user.uid))
-          .map(task => normalizeTask(task))
-          .filter(task => task.title && task.dueDate && task.dueDate >= todayString);
+        const uid = user.uid;
+        const localBackupSubjects = loadSubjects();
+        const localBackupTemplates = loadTaskTemplates();
         const localBackupTasks = loadTasks()
           .filter(task => task.title && task.dueDate && task.dueDate >= todayString);
-        const migrationKey = getMigrationKey(user.uid);
-        const hasMigrated = localStorage.getItem(migrationKey) === "true";
+
+        const remoteSubjects = (await window.firebaseCloud.loadSubjects(uid))
+          .map(subject => normalizeSubject(subject))
+          .filter(subject => subject.name && subject.dueDay >= 0 && subject.dueDay <= 6);
+        const remoteTemplates = (await window.firebaseCloud.loadTemplates(uid))
+          .map(template => normalizeTemplate(template))
+          .filter(template => template.name);
+
+        const subjectMigrationKey = getMigrationKey(uid, "subjects");
+        const templateMigrationKey = getMigrationKey(uid, "taskTemplates");
+        const taskMigrationKey = getMigrationKey(uid, "tasks");
+        const hasMigratedSubjects = localStorage.getItem(subjectMigrationKey) === "true";
+        const hasMigratedTemplates = localStorage.getItem(templateMigrationKey) === "true";
+        const hasMigratedTasks = localStorage.getItem(taskMigrationKey) === "true";
+
+        let nextSubjects = remoteSubjects;
+        if (!hasMigratedSubjects && remoteSubjects.length === 0 && localBackupSubjects.length > 0) {
+          nextSubjects = mergeById(remoteSubjects, localBackupSubjects, normalizeSubject)
+            .sort((a, b) => a.name.localeCompare(b.name, "ja"));
+          await window.firebaseCloud.saveSubjects(uid, nextSubjects);
+          localStorage.setItem(subjectMigrationKey, "true");
+        }
+
+        let nextTemplates = remoteTemplates;
+        if (!hasMigratedTemplates && remoteTemplates.length === 0 && localBackupTemplates.length > 0) {
+          nextTemplates = mergeById(remoteTemplates, localBackupTemplates, normalizeTemplate);
+          await window.firebaseCloud.saveTemplates(uid, nextTemplates);
+          localStorage.setItem(templateMigrationKey, "true");
+        }
+
+        subjects = nextSubjects;
+        taskTemplates = nextTemplates;
+
+        const remoteTasks = (await window.firebaseCloud.loadTasks(uid))
+          .map(task => normalizeTask(task))
+          .filter(task => task.title && task.dueDate && task.dueDate >= todayString);
 
         let nextTasks = remoteTasks;
-        if (!hasMigrated && localBackupTasks.length > 0) {
+        if (!hasMigratedTasks && localBackupTasks.length > 0) {
           nextTasks = mergeTaskLists(remoteTasks, localBackupTasks).map(task => enrichTaskForCloud(task));
-          await window.firebaseCloud.saveTasks(user.uid, nextTasks);
-          localStorage.setItem(migrationKey, "true");
-          cloudStatusMessage = "localStorageの既存課題をFirestoreへ移行しました。バックアップはこの端末に残しています。";
-        } else {
-          cloudStatusMessage = "Firestoreと同期済みです。";
+          await window.firebaseCloud.saveTasks(uid, nextTasks);
+          localStorage.setItem(taskMigrationKey, "true");
         }
 
         tasks = nextTasks;
-        console.log("Applied Firestore tasks to app state", { uid: user.uid, count: tasks.length, tasks });
+        console.log("Applied Firestore data to app state", {
+          uid,
+          taskCount: tasks.length,
+          subjectCount: subjects.length,
+          templateCount: taskTemplates.length,
+          tasks,
+          subjects,
+          taskTemplates
+        });
+        cloudStatusMessage = "Firestoreと同期済みです。";
         isCloudDataReady = true;
         removeExpiredTasks();
         saveAll();
         resetTaskForm();
       } catch (error) {
-        console.error("Firestore signed-in task load failed", { uid: user.uid, error });
+        console.error("Firestore signed-in data load failed", { uid: user.uid, error });
         tasks = [];
+        subjects = [];
+        taskTemplates = loadTaskTemplates();
         isCloudDataReady = false;
         cloudErrorMessage = `Firestoreに接続できませんでした: ${error.message || error}`;
         cloudStatusMessage = "無料のFirebase AuthenticationとCloud Firestoreのみを使います。有料機能への切り替えは行いません。";
@@ -1616,21 +1791,29 @@
       }
     }
 
-    function getMigrationKey(uid) {
-      return `firestoreTasksMigrated:${uid}`;
+    function getMigrationKey(uid, type = "tasks") {
+      return `firestore${type}Migrated:${uid}`;
     }
 
-    function mergeTaskLists(remoteTasks, localTasks) {
+    function mergeById(remoteItems, localItems, normalizer) {
       const merged = new Map();
-      remoteTasks.forEach(task => merged.set(task.id, normalizeTask(task)));
-      localTasks.forEach(task => {
-        const normalized = normalizeTask(task);
+      remoteItems.forEach(item => {
+        const normalized = normalizer(item);
+        merged.set(normalized.id, normalized);
+      });
+      localItems.forEach(item => {
+        const normalized = normalizer(item);
         const existing = merged.get(normalized.id);
         if (!existing || Number(normalized.updatedAt || 0) > Number(existing.updatedAt || 0)) {
           merged.set(normalized.id, normalized);
         }
       });
-      return [...merged.values()].sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+      return [...merged.values()];
+    }
+
+    function mergeTaskLists(remoteTasks, localTasks) {
+      return mergeById(remoteTasks, localTasks, normalizeTask)
+        .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
     }
 
     function isTaskAccessReady() {
@@ -1787,6 +1970,44 @@
       }
     }
 
+    async function saveSubjectToCloud(subject) {
+      if (!currentUser || !window.firebaseCloud) throw new Error("ログインしてください。");
+      const uid = currentUser.uid;
+      const cloudSubject = normalizeSubject({
+        ...subject,
+        createdAt: Number(subject.createdAt) || Date.now(),
+        updatedAt: Number(subject.updatedAt) || Date.now()
+      });
+      console.log("Saving subject to Firestore", { uid, subjectId: cloudSubject.id, path: `users/${uid}/subjects/${cloudSubject.id}`, subject: cloudSubject });
+      return normalizeSubject(await window.firebaseCloud.saveSubject(uid, cloudSubject));
+    }
+
+    async function deleteSubjectFromCloud(subjectId) {
+      if (!currentUser || !window.firebaseCloud) throw new Error("ログインしてください。");
+      const uid = currentUser.uid;
+      console.log("Deleting subject from Firestore", { uid, subjectId, path: `users/${uid}/subjects/${subjectId}` });
+      await window.firebaseCloud.deleteSubject(uid, subjectId);
+    }
+
+    async function saveTemplateToCloud(template) {
+      if (!currentUser || !window.firebaseCloud) throw new Error("ログインしてください。");
+      const uid = currentUser.uid;
+      const cloudTemplate = normalizeTemplate({
+        ...template,
+        createdAt: Number(template.createdAt) || Date.now(),
+        updatedAt: Number(template.updatedAt) || Date.now()
+      });
+      console.log("Saving task template to Firestore", { uid, templateId: cloudTemplate.id, path: `users/${uid}/taskTemplates/${cloudTemplate.id}`, template: cloudTemplate });
+      return normalizeTemplate(await window.firebaseCloud.saveTemplate(uid, cloudTemplate));
+    }
+
+    async function deleteTemplateFromCloud(templateId) {
+      if (!currentUser || !window.firebaseCloud) throw new Error("ログインしてください。");
+      const uid = currentUser.uid;
+      console.log("Deleting task template from Firestore", { uid, templateId, path: `users/${uid}/taskTemplates/${templateId}` });
+      await window.firebaseCloud.deleteTemplate(uid, templateId);
+    }
+
     function loadArray(key) {
       try {
         const value = JSON.parse(localStorage.getItem(key));
@@ -1796,13 +2017,19 @@
       }
     }
 
+    function normalizeSubject(subject) {
+      return {
+        id: String(subject.id || createId()),
+        name: String(subject.name || "").trim(),
+        dueDay: Number(subject.dueDay),
+        createdAt: Number(subject.createdAt) || 0,
+        updatedAt: Number(subject.updatedAt) || 0
+      };
+    }
+
     function loadSubjects() {
       return loadArray("subjects")
-        .map(subject => ({
-          id: String(subject.id || createId()),
-          name: String(subject.name || "").trim(),
-          dueDay: Number(subject.dueDay)
-        }))
+        .map(subject => normalizeSubject(subject))
         .filter(subject => subject.name && subject.dueDay >= 0 && subject.dueDay <= 6);
     }
 
@@ -1813,11 +2040,17 @@
         : loadArray("taskTemplates");
 
       return templates
-        .map(template => ({
-          id: String(template.id || createId()),
-          name: String(template.name || "").trim()
-        }))
+        .map(template => normalizeTemplate(template))
         .filter(template => template.name);
+    }
+
+    function normalizeTemplate(template) {
+      return {
+        id: String(template.id || createId()),
+        name: String(template.name || "").trim(),
+        createdAt: Number(template.createdAt) || 0,
+        updatedAt: Number(template.updatedAt) || 0
+      };
     }
 
     function loadTasks() {
@@ -1928,7 +2161,7 @@
       deleteTasksFromCloud(expiredTaskIds);
     }
 
-    function addSubject() {
+    async function addSubject() {
       if (!requireTaskAccess()) return;
 
       const nameInput = document.getElementById("newSubjectName");
@@ -1942,15 +2175,24 @@
         return;
       }
 
-      const subject = { id: createId(), name, dueDay };
-      subjects.push(subject);
-      subjects.sort((a, b) => a.name.localeCompare(b.name, "ja"));
-      nameInput.value = "";
-      saveAll();
-      renderAll();
-      renderSubjectOptions(subject.id);
-      document.getElementById("taskSubject").value = subject.id;
-      handleSubjectChange();
+      const now = Date.now();
+      const subject = { id: createId(), name, dueDay, createdAt: now, updatedAt: now };
+
+      try {
+        const cloudSubject = await saveSubjectToCloud(subject);
+        console.log("Subject Firestore save completed", { uid: currentUser?.uid, subject: cloudSubject });
+        subjects.push(cloudSubject);
+        subjects.sort((a, b) => a.name.localeCompare(b.name, "ja"));
+        nameInput.value = "";
+        saveAll();
+        renderAll();
+        renderSubjectOptions(cloudSubject.id);
+        document.getElementById("taskSubject").value = cloudSubject.id;
+        handleSubjectChange();
+      } catch (error) {
+        console.error("Subject save failed", { uid: currentUser?.uid, subject, error });
+        alert(`教科をFirestoreへ保存できませんでした: ${error.message || error}`);
+      }
     }
 
     function addSubjectOnEnter(event) {
@@ -1960,7 +2202,7 @@
       addSubject();
     }
 
-    function deleteSubject(id) {
+    async function deleteSubject(id) {
       if (!requireTaskAccess()) return;
 
       const subject = subjects.find(item => item.id === id);
@@ -1969,9 +2211,16 @@
       const ok = confirm(`${subject.name} を登録教科から削除しますか？登録済みの課題はそのまま残ります。`);
       if (!ok) return;
 
-      subjects = subjects.filter(item => item.id !== id);
-      saveAll();
-      renderAll();
+      try {
+        await deleteSubjectFromCloud(id);
+        console.log("Subject Firestore delete completed", { uid: currentUser?.uid, subjectId: id });
+        subjects = subjects.filter(item => item.id !== id);
+        saveAll();
+        renderAll();
+      } catch (error) {
+        console.error("Subject delete failed", { uid: currentUser?.uid, subjectId: id, error });
+        alert(`教科をFirestoreから削除できませんでした: ${error.message || error}`);
+      }
     }
 
     function renderSubjectManager() {
@@ -2014,7 +2263,7 @@
       if (!select.value && subjects[0]) select.value = subjects[0].id;
     }
 
-    function addTemplate() {
+    async function addTemplate() {
       if (!requireTaskAccess()) return;
 
       const input = document.getElementById("newTemplateName");
@@ -2026,10 +2275,20 @@
         return;
       }
 
-      taskTemplates.push({ id: createId(), name });
-      input.value = "";
-      saveAll();
-      renderAll();
+      const now = Date.now();
+      const template = { id: createId(), name, createdAt: now, updatedAt: now };
+
+      try {
+        const cloudTemplate = await saveTemplateToCloud(template);
+        console.log("Task template Firestore save completed", { uid: currentUser?.uid, template: cloudTemplate });
+        taskTemplates.push(cloudTemplate);
+        input.value = "";
+        saveAll();
+        renderAll();
+      } catch (error) {
+        console.error("Task template save failed", { uid: currentUser?.uid, template, error });
+        alert(`課題名テンプレートをFirestoreへ保存できませんでした: ${error.message || error}`);
+      }
     }
 
     function addTemplateOnEnter(event) {
@@ -2039,12 +2298,19 @@
       addTemplate();
     }
 
-    function deleteTemplate(id) {
+    async function deleteTemplate(id) {
       if (!requireTaskAccess()) return;
 
-      taskTemplates = taskTemplates.filter(template => template.id !== id);
-      saveAll();
-      renderAll();
+      try {
+        await deleteTemplateFromCloud(id);
+        console.log("Task template Firestore delete completed", { uid: currentUser?.uid, templateId: id });
+        taskTemplates = taskTemplates.filter(template => template.id !== id);
+        saveAll();
+        renderAll();
+      } catch (error) {
+        console.error("Task template delete failed", { uid: currentUser?.uid, templateId: id, error });
+        alert(`課題名テンプレートをFirestoreから削除できませんでした: ${error.message || error}`);
+      }
     }
 
     function renderTemplateManager() {
@@ -2840,7 +3106,7 @@
       });
 
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=13", { updateViaCache: "none" })
+        navigator.serviceWorker.register("./service-worker.js?v=14", { updateViaCache: "none" })
           .then(registration => registration.update())
           .catch(error => console.warn("Service Worker registration failed:", error));
       });
