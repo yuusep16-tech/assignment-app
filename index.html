@@ -1772,7 +1772,12 @@
     }
 
     function getUpcomingTasks() {
-      return sortUpcomingTasks(tasks.filter(task => !task.completed && task.dueDate >= todayString));
+      const upcomingLimitDate = addDaysToDateString(todayString, 2);
+      return sortUpcomingTasks(tasks.filter(task => (
+        !task.completed
+        && task.dueDate >= todayString
+        && task.dueDate <= upcomingLimitDate
+      )));
     }
 
     function renderTaskToggleButton(task, className, extraClass = "") {
@@ -1818,7 +1823,7 @@
 
       if (focusTasks.length === 0) {
         list.classList.remove("expanded");
-        list.innerHTML = "<p class='success-text'>近い締切の未完了課題はありません。</p>";
+        list.innerHTML = "<p class='success-text'>直近3日間の未完了課題はありません。</p>";
         return;
       }
 
