@@ -55,6 +55,68 @@
       opacity: 0.9;
     }
 
+    .auth-panel {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      max-width: 1100px;
+      margin: 18px auto 0;
+      padding: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.14);
+      text-align: left;
+    }
+
+    .auth-status {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .auth-status strong,
+    .auth-status span {
+      overflow-wrap: anywhere;
+    }
+
+    .auth-status span {
+      font-size: 13px;
+      opacity: 0.9;
+    }
+
+    .auth-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .auth-actions button {
+      border: none;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-weight: 800;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .auth-actions .login {
+      background: white;
+      color: #1d4ed8;
+    }
+
+    .auth-actions .logout {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.45);
+    }
+
+    .auth-actions button:disabled {
+      cursor: wait;
+      opacity: 0.65;
+    }
+
     nav {
       position: sticky;
       top: 0;
@@ -373,6 +435,29 @@
 
     .hidden {
       display: none;
+    }
+
+    .login-required {
+      margin: 0;
+      padding: 14px;
+      border: 1px dashed #c7d2fe;
+      border-radius: 8px;
+      background: #eef2ff;
+      color: #3730a3;
+      font-weight: 700;
+      line-height: 1.6;
+    }
+
+    .calendar-grid .login-required {
+      grid-column: 1 / -1;
+    }
+
+    button:disabled,
+    input:disabled,
+    select:disabled,
+    textarea:disabled {
+      cursor: not-allowed;
+      opacity: 0.58;
     }
 
 
@@ -866,6 +951,21 @@
         display: none;
       }
 
+      .auth-panel {
+        grid-template-columns: 1fr;
+        margin-top: 14px;
+        padding: 12px;
+      }
+
+      .auth-actions {
+        justify-content: stretch;
+      }
+
+      .auth-actions button {
+        flex: 1;
+        min-height: 42px;
+      }
+
       nav {
         padding: 8px;
       }
@@ -1050,6 +1150,16 @@
   <header>
     <h1>課題・カレンダー管理アプリ</h1>
     <p>課題の締切を登録して、カレンダーで確認</p>
+    <div class="auth-panel" aria-live="polite">
+      <div class="auth-status">
+        <strong id="authStatusTitle">ログインしてください</strong>
+        <span id="authStatusDetail">Googleログイン後、課題をクラウド同期します。</span>
+      </div>
+      <div class="auth-actions">
+        <button id="googleLoginButton" class="login" type="button" onclick="signInWithGoogle()">Googleでログイン</button>
+        <button id="logoutButton" class="logout hidden" type="button" onclick="signOutUser()">ログアウト</button>
+      </div>
+    </div>
   </header>
 
   <nav>
@@ -1198,6 +1308,122 @@
     </section>
   </main>
 
+  <script type="module">
+    // Sparkプランで使える Firebase Authentication と Cloud Firestore だけを読み込みます。
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+    import {
+      getAuth,
+      GoogleAuthProvider,
+      onAuthStateChanged,
+      signInWithPopup,
+      signInWithRedirect,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+    import {
+      collection,
+      deleteDoc,
+      doc,
+      getDocs,
+      getFirestore,
+      setDoc,
+      writeBatch
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyC25r5DnNKSawAZvTjgD7CbVuztcQJpdIU",
+      authDomain: "assignment-app-179cc.firebaseapp.com",
+      projectId: "assignment-app-179cc",
+      storageBucket: "assignment-app-179cc.firebasestorage.app",
+      messagingSenderId: "127969219519",
+      appId: "1:127969219519:web:f36bb4c932333ad686c70a",
+      measurementId: "G-10WGLLNJM8"
+    };
+
+    try {
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
+
+      function taskCollection(uid) {
+        return collection(db, "users", uid, "tasks");
+      }
+
+      function taskDocument(uid, taskId) {
+        return doc(db, "users", uid, "tasks", taskId);
+      }
+
+      function cleanTask(task) {
+        return {
+          id: String(task.id),
+          subjectId: String(task.subjectId || ""),
+          subjectName: String(task.subjectName || ""),
+          subjectDueDay: Number.isFinite(Number(task.subjectDueDay)) ? Number(task.subjectDueDay) : null,
+          title: String(task.title || ""),
+          dueDate: String(task.dueDate || ""),
+          priority: String(task.priority || "middle"),
+          memo: String(task.memo || ""),
+          completed: Boolean(task.completed),
+          updatedAt: Number(task.updatedAt) || Date.now()
+        };
+      }
+
+      window.firebaseCloud = {
+        onAuthStateChanged(callback) {
+          return onAuthStateChanged(auth, callback);
+        },
+        async signInWithGoogle() {
+          try {
+            return await signInWithPopup(auth, provider);
+          } catch (error) {
+            if (error.code === "auth/popup-blocked" || error.code === "auth/operation-not-supported-in-this-environment") {
+              return signInWithRedirect(auth, provider);
+            }
+            throw error;
+          }
+        },
+        signOutUser() {
+          return signOut(auth);
+        },
+        async loadTasks(uid) {
+          const snapshot = await getDocs(taskCollection(uid));
+          return snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+        },
+        async saveTask(uid, task) {
+          const cleaned = cleanTask(task);
+          await setDoc(taskDocument(uid, cleaned.id), cleaned, { merge: true });
+        },
+        async saveTasks(uid, tasks) {
+          const cleanedTasks = tasks.map(cleanTask);
+          for (let index = 0; index < cleanedTasks.length; index += 400) {
+            const batch = writeBatch(db);
+            cleanedTasks.slice(index, index + 400).forEach(task => {
+              batch.set(taskDocument(uid, task.id), task, { merge: true });
+            });
+            await batch.commit();
+          }
+        },
+        async deleteTask(uid, taskId) {
+          await deleteDoc(taskDocument(uid, taskId));
+        },
+        async deleteTasks(uid, taskIds) {
+          for (let index = 0; index < taskIds.length; index += 400) {
+            const batch = writeBatch(db);
+            taskIds.slice(index, index + 400).forEach(taskId => {
+              batch.delete(taskDocument(uid, taskId));
+            });
+            await batch.commit();
+          }
+        }
+      };
+
+      window.dispatchEvent(new CustomEvent("firebaseCloudReady"));
+    } catch (error) {
+      window.dispatchEvent(new CustomEvent("firebaseCloudError", { detail: error }));
+    }
+  </script>
+
   <script>
     const DEFAULT_TEMPLATES = [
       "レポート",
@@ -1225,17 +1451,277 @@
     let isTaskFormOpen = false;
     let isFocusExpanded = false;
     let hasToggledWeekDay = false;
+    let currentUser = null;
+    let isAuthReady = false;
+    let isCloudReady = false;
+    let isCloudDataReady = false;
+    let isCloudBusy = false;
+    let cloudErrorMessage = "";
+    let cloudStatusMessage = "Googleログイン後、Firestoreから課題を読み込みます。";
     const openWeekDates = new Set();
 
     migrateOldData();
-    removeExpiredTasks();
     saveAll();
+    initializeFirebaseCloud();
 
     function saveAll() {
       localStorage.setItem("subjects", JSON.stringify(subjects));
       localStorage.setItem("taskTemplates", JSON.stringify(taskTemplates));
       localStorage.setItem("tasks", JSON.stringify(tasks));
-      localStorage.removeItem("registeredSubjects");
+    }
+
+    function initializeFirebaseCloud() {
+      window.addEventListener("firebaseCloudReady", () => {
+        isCloudReady = true;
+        cloudErrorMessage = "";
+        registerAuthListener();
+        updateAuthUi();
+      });
+
+      window.addEventListener("firebaseCloudError", event => {
+        isAuthReady = true;
+        isCloudReady = false;
+        isCloudDataReady = false;
+        cloudErrorMessage = `Firebaseを読み込めませんでした: ${event.detail?.message || "ネットワークを確認してください。"}`;
+        updateAuthUi();
+        renderAll();
+      });
+
+      if (window.firebaseCloud) {
+        isCloudReady = true;
+        registerAuthListener();
+      }
+
+      window.setTimeout(() => {
+        if (isCloudReady || window.firebaseCloud) return;
+        isAuthReady = true;
+        cloudErrorMessage = "Firebase SDKを読み込めませんでした。ネットワーク接続を確認してください。";
+        updateAuthUi();
+        renderAll();
+      }, 8000);
+
+      updateAuthUi();
+    }
+
+    function registerAuthListener() {
+      if (!window.firebaseCloud || registerAuthListener.hasRegistered) return;
+      registerAuthListener.hasRegistered = true;
+
+      window.firebaseCloud.onAuthStateChanged(async user => {
+        isAuthReady = true;
+        currentUser = user;
+        cloudErrorMessage = "";
+
+        if (!user) {
+          tasks = [];
+          editingTaskId = null;
+          isCloudDataReady = false;
+          isCloudBusy = false;
+          cloudStatusMessage = "ログインしてください。課題データはログイン後に表示されます。";
+          updateAuthUi();
+          resetTaskForm();
+          renderAll();
+          return;
+        }
+
+        await loadSignedInTasks(user);
+      });
+    }
+
+    async function loadSignedInTasks(user) {
+      isCloudBusy = true;
+      isCloudDataReady = false;
+      cloudStatusMessage = "Firestoreから課題を読み込んでいます。";
+      updateAuthUi();
+      renderAll();
+
+      try {
+        const remoteTasks = (await window.firebaseCloud.loadTasks(user.uid))
+          .map(task => normalizeTask(task))
+          .filter(task => task.title && task.dueDate && task.dueDate >= todayString);
+        const localBackupTasks = loadTasks()
+          .filter(task => task.title && task.dueDate && task.dueDate >= todayString);
+        const migrationKey = getMigrationKey(user.uid);
+        const hasMigrated = localStorage.getItem(migrationKey) === "true";
+
+        let nextTasks = remoteTasks;
+        if (!hasMigrated && localBackupTasks.length > 0) {
+          nextTasks = mergeTaskLists(remoteTasks, localBackupTasks).map(task => enrichTaskForCloud(task));
+          await window.firebaseCloud.saveTasks(user.uid, nextTasks);
+          localStorage.setItem(migrationKey, "true");
+          cloudStatusMessage = "localStorageの既存課題をFirestoreへ移行しました。バックアップはこの端末に残しています。";
+        } else {
+          cloudStatusMessage = "Firestoreと同期済みです。";
+        }
+
+        tasks = nextTasks;
+        isCloudDataReady = true;
+        removeExpiredTasks();
+        saveAll();
+        resetTaskForm();
+      } catch (error) {
+        tasks = [];
+        isCloudDataReady = false;
+        cloudErrorMessage = `Firestoreに接続できませんでした: ${error.message || error}`;
+        cloudStatusMessage = "無料のFirebase AuthenticationとCloud Firestoreのみを使います。有料機能への切り替えは行いません。";
+      } finally {
+        isCloudBusy = false;
+        updateAuthUi();
+        renderAll();
+      }
+    }
+
+    function getMigrationKey(uid) {
+      return `firestoreTasksMigrated:${uid}`;
+    }
+
+    function mergeTaskLists(remoteTasks, localTasks) {
+      const merged = new Map();
+      remoteTasks.forEach(task => merged.set(task.id, normalizeTask(task)));
+      localTasks.forEach(task => {
+        const normalized = normalizeTask(task);
+        const existing = merged.get(normalized.id);
+        if (!existing || Number(normalized.updatedAt || 0) > Number(existing.updatedAt || 0)) {
+          merged.set(normalized.id, normalized);
+        }
+      });
+      return [...merged.values()].sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+    }
+
+    function isTaskAccessReady() {
+      return Boolean(currentUser && isCloudDataReady && !isCloudBusy);
+    }
+
+    function getUnavailableMessage() {
+      if (!isAuthReady || !isCloudReady) return "Firebaseを準備中です。少し待ってからもう一度お試しください。";
+      if (!currentUser) return "ログインしてください。Googleアカウントでログインすると課題データを表示できます。";
+      if (cloudErrorMessage) return "Firestoreに接続できないため、課題操作を一時停止しています。";
+      return "Firestoreから課題データを読み込んでいます。";
+    }
+
+    function loginRequiredHtml(message = getUnavailableMessage()) {
+      return `<p class="login-required">${escapeHtml(message)}</p>`;
+    }
+
+    function requireTaskAccess() {
+      if (isTaskAccessReady()) return true;
+      alert(getUnavailableMessage());
+      updateAuthUi();
+      return false;
+    }
+
+    function updateAuthUi() {
+      const title = document.getElementById("authStatusTitle");
+      const detail = document.getElementById("authStatusDetail");
+      const loginButton = document.getElementById("googleLoginButton");
+      const logoutButton = document.getElementById("logoutButton");
+      if (!title || !detail || !loginButton || !logoutButton) return;
+
+      loginButton.disabled = isCloudBusy || !isCloudReady;
+      logoutButton.disabled = isCloudBusy || !isCloudReady;
+      loginButton.classList.toggle("hidden", Boolean(currentUser));
+      logoutButton.classList.toggle("hidden", !currentUser);
+
+      if (cloudErrorMessage) {
+        title.textContent = currentUser ? "クラウド同期を確認してください" : "Firebaseを準備できません";
+        detail.textContent = `${cloudErrorMessage} Sparkプラン内のAuthenticationとCloud Firestoreだけを使用します。`;
+      } else if (!isAuthReady || !isCloudReady) {
+        title.textContent = "Firebaseを準備中";
+        detail.textContent = "無料のAuthenticationとCloud Firestoreを読み込んでいます。";
+      } else if (!currentUser) {
+        title.textContent = "ログインしてください";
+        detail.textContent = "Googleログイン後、ユーザーごとにFirestoreへ課題を保存します。";
+      } else {
+        title.textContent = `${currentUser.displayName || currentUser.email || "Googleアカウント"} でログイン中`;
+        detail.textContent = cloudStatusMessage;
+      }
+
+      updateInteractiveState();
+    }
+
+    function updateInteractiveState() {
+      const disabled = !isTaskAccessReady();
+      document.querySelectorAll(
+        "#taskForm input, #taskForm select, #taskForm textarea, #taskForm button, #taskFormToggle, #cancelEditButton, .subject-tools input, .subject-tools select, .subject-tools button, .template-tools input, .template-tools button"
+      ).forEach(element => {
+        element.disabled = disabled;
+      });
+    }
+
+    async function signInWithGoogle() {
+      if (!window.firebaseCloud) {
+        alert("Firebaseを読み込めません。ネットワーク接続とFirebase設定を確認してください。");
+        return;
+      }
+
+      isCloudBusy = true;
+      cloudErrorMessage = "";
+      cloudStatusMessage = "Googleログインを開いています。";
+      updateAuthUi();
+
+      try {
+        await window.firebaseCloud.signInWithGoogle();
+      } catch (error) {
+        if (error.code !== "auth/popup-closed-by-user" && error.code !== "auth/cancelled-popup-request") {
+          cloudErrorMessage = `Googleログインに失敗しました: ${error.message || error}`;
+          alert(cloudErrorMessage);
+        }
+      } finally {
+        isCloudBusy = false;
+        updateAuthUi();
+      }
+    }
+
+    async function signOutUser() {
+      if (!window.firebaseCloud) return;
+
+      isCloudBusy = true;
+      updateAuthUi();
+      try {
+        await window.firebaseCloud.signOutUser();
+      } catch (error) {
+        cloudErrorMessage = `ログアウトに失敗しました: ${error.message || error}`;
+        alert(cloudErrorMessage);
+      } finally {
+        isCloudBusy = false;
+        updateAuthUi();
+      }
+    }
+
+    function enrichTaskForCloud(task) {
+      const subject = subjects.find(item => item.id === task.subjectId);
+      return normalizeTask({
+        ...task,
+        subjectName: subject?.name || task.subjectName || "",
+        subjectDueDay: Number.isFinite(Number(subject?.dueDay)) ? Number(subject.dueDay) : task.subjectDueDay,
+        updatedAt: Number(task.updatedAt) || Date.now()
+      });
+    }
+
+    async function saveTaskToCloud(task) {
+      if (!currentUser || !window.firebaseCloud) throw new Error("ログインしてください。");
+      const cloudTask = enrichTaskForCloud(task);
+      await window.firebaseCloud.saveTask(currentUser.uid, cloudTask);
+      cloudStatusMessage = "Firestoreへ保存しました。";
+      return cloudTask;
+    }
+
+    async function deleteTaskFromCloud(taskId) {
+      if (!currentUser || !window.firebaseCloud) throw new Error("ログインしてください。");
+      await window.firebaseCloud.deleteTask(currentUser.uid, taskId);
+      cloudStatusMessage = "Firestoreから削除しました。";
+    }
+
+    async function deleteTasksFromCloud(taskIds) {
+      if (!currentUser || !window.firebaseCloud || taskIds.length === 0) return;
+      try {
+        await window.firebaseCloud.deleteTasks(currentUser.uid, taskIds);
+        cloudStatusMessage = "期限切れ課題をFirestoreから削除しました。";
+        updateAuthUi();
+      } catch (error) {
+        cloudErrorMessage = `期限切れ課題のクラウド削除に失敗しました: ${error.message || error}`;
+        updateAuthUi();
+      }
     }
 
     function loadArray(key) {
@@ -1306,11 +1792,18 @@
       return {
         id: String(task.id || createId()),
         subjectId: String(task.subjectId || matchedSubject?.id || ""),
+        subjectName: String(task.subjectName || matchedSubject?.name || oldSubjectName || "").trim(),
+        subjectDueDay: Number.isFinite(Number(task.subjectDueDay))
+          ? Number(task.subjectDueDay)
+          : Number.isFinite(Number(matchedSubject?.dueDay))
+            ? Number(matchedSubject.dueDay)
+            : null,
         title: String(task.title || "").trim(),
         dueDate: String(task.dueDate || task.deadline || ""),
         priority: normalizePriority(task.priority),
         memo: String(task.memo || "").trim(),
-        completed: task.completed ?? false
+        completed: Boolean(task.completed ?? false),
+        updatedAt: Number(task.updatedAt) || 0
       };
     }
 
@@ -1358,12 +1851,22 @@
     }
 
     function removeExpiredTasks() {
-      const before = tasks.length;
+      if (!isTaskAccessReady()) return;
+
+      const expiredTaskIds = tasks
+        .filter(task => task.dueDate && task.dueDate < todayString)
+        .map(task => task.id);
+      if (expiredTaskIds.length === 0) return;
+
       tasks = tasks.filter(task => !task.dueDate || task.dueDate >= todayString);
-      if (tasks.length !== before) saveAll();
+      if (editingTaskId && expiredTaskIds.includes(editingTaskId)) editingTaskId = null;
+      saveAll();
+      deleteTasksFromCloud(expiredTaskIds);
     }
 
     function addSubject() {
+      if (!requireTaskAccess()) return;
+
       const nameInput = document.getElementById("newSubjectName");
       const dueDayInput = document.getElementById("newSubjectDueDay");
       const name = nameInput.value.trim();
@@ -1394,6 +1897,8 @@
     }
 
     function deleteSubject(id) {
+      if (!requireTaskAccess()) return;
+
       const subject = subjects.find(item => item.id === id);
       if (!subject) return;
 
@@ -1407,6 +1912,11 @@
 
     function renderSubjectManager() {
       const list = document.getElementById("subjectList");
+
+      if (!isTaskAccessReady()) {
+        list.innerHTML = loginRequiredHtml("教科登録はログイン後に使えます。");
+        return;
+      }
 
       if (subjects.length === 0) {
         list.innerHTML = "<p class='muted'>教科と提出曜日を登録すると、課題追加で選べるようになります。</p>";
@@ -1441,6 +1951,8 @@
     }
 
     function addTemplate() {
+      if (!requireTaskAccess()) return;
+
       const input = document.getElementById("newTemplateName");
       const name = input.value.trim();
       if (!name) return;
@@ -1464,6 +1976,8 @@
     }
 
     function deleteTemplate(id) {
+      if (!requireTaskAccess()) return;
+
       taskTemplates = taskTemplates.filter(template => template.id !== id);
       saveAll();
       renderAll();
@@ -1471,6 +1985,11 @@
 
     function renderTemplateManager() {
       const list = document.getElementById("templateList");
+
+      if (!isTaskAccessReady()) {
+        list.innerHTML = loginRequiredHtml("課題名テンプレートはログイン後に使えます。");
+        return;
+      }
 
       if (taskTemplates.length === 0) {
         list.innerHTML = "<p class='muted'>テンプレートを追加すると、課題名を選べるようになります。</p>";
@@ -1576,8 +2095,9 @@
       updateTaskFormPanel();
     }
 
-    function saveTask(event) {
+    async function saveTask(event) {
       event.preventDefault();
+      if (!requireTaskAccess()) return;
       removeExpiredTasks();
 
       const title = getSelectedTaskTitle();
@@ -1601,21 +2121,32 @@
         dueDate: document.getElementById("taskDeadline").value,
         priority: document.getElementById("taskPriority").value,
         memo: document.getElementById("taskMemo").value.trim(),
-        completed: existingTask?.completed ?? false
+        completed: existingTask?.completed ?? false,
+        subjectName: existingTask?.subjectName || "",
+        subjectDueDay: existingTask?.subjectDueDay ?? null,
+        updatedAt: Date.now()
       };
 
-      if (editingTaskId) {
-        tasks = tasks.map(item => item.id === editingTaskId ? task : item);
-      } else {
-        tasks.push(task);
-      }
+      try {
+        const cloudTask = await saveTaskToCloud(task);
+        if (editingTaskId) {
+          tasks = tasks.map(item => item.id === editingTaskId ? cloudTask : item);
+        } else {
+          tasks.push(cloudTask);
+        }
 
-      saveAll();
-      resetTaskForm();
-      renderAll();
+        saveAll();
+        resetTaskForm();
+        renderAll();
+      } catch (error) {
+        cloudErrorMessage = `Firestoreへの保存に失敗しました: ${error.message || error}`;
+        alert(cloudErrorMessage);
+        updateAuthUi();
+      }
     }
 
     function startEdit(id) {
+      if (!requireTaskAccess()) return;
       removeExpiredTasks();
       const task = tasks.find(item => item.id === id);
       if (!task) {
@@ -1656,33 +2187,58 @@
         ? getNextDueDate(selectedSubject.dueDay)
         : todayString;
       closeTaskFormPanel();
+      updateInteractiveState();
     }
 
-    function toggleTaskCompleted(id) {
-      tasks = tasks.map(task => (
-        task.id === id
-          ? { ...task, completed: !task.completed }
-          : task
-      ));
-      saveAll();
-      renderTasks();
-      renderTodayFocus();
-      renderSevenDayTasks();
-      renderCalendar();
-      renderMobileCalendar();
+    async function toggleTaskCompleted(id) {
+      if (!requireTaskAccess()) return;
+
+      const targetTask = tasks.find(task => task.id === id);
+      if (!targetTask) return;
+      const updatedTask = {
+        ...targetTask,
+        completed: !targetTask.completed,
+        updatedAt: Date.now()
+      };
+
+      try {
+        const cloudTask = await saveTaskToCloud(updatedTask);
+        tasks = tasks.map(task => task.id === id ? cloudTask : task);
+        saveAll();
+        renderTasks();
+        renderTodayFocus();
+        renderSevenDayTasks();
+        renderCalendar();
+        renderMobileCalendar();
+        updateAuthUi();
+      } catch (error) {
+        cloudErrorMessage = `Firestoreへの保存に失敗しました: ${error.message || error}`;
+        alert(cloudErrorMessage);
+        updateAuthUi();
+      }
     }
 
-    function deleteTask(id) {
+    async function deleteTask(id) {
+      if (!requireTaskAccess()) return;
+
       const task = tasks.find(item => item.id === id);
       if (!task) return;
 
       const ok = confirm("この課題を削除しますか？");
       if (!ok) return;
 
-      tasks = tasks.filter(task => task.id !== id);
-      if (editingTaskId === id) resetTaskForm();
-      saveAll();
-      renderAll();
+      try {
+        await deleteTaskFromCloud(id);
+        tasks = tasks.filter(task => task.id !== id);
+        if (editingTaskId === id) resetTaskForm();
+        saveAll();
+        renderAll();
+        updateAuthUi();
+      } catch (error) {
+        cloudErrorMessage = `Firestoreからの削除に失敗しました: ${error.message || error}`;
+        alert(cloudErrorMessage);
+        updateAuthUi();
+      }
     }
 
     function normalizePriority(priority) {
@@ -1704,6 +2260,12 @@
       return subjects.find(subject => subject.id === subjectId)?.name || "削除済みの教科";
     }
 
+    function getTaskSubjectName(task) {
+      return subjects.find(subject => subject.id === task.subjectId)?.name
+        || task.subjectName
+        || "削除済みの教科";
+    }
+
     function addDaysToDateString(dateString, days) {
       const date = parseDateInput(dateString);
       date.setDate(date.getDate() + days);
@@ -1715,7 +2277,7 @@
     }
 
     function getGoogleCalendarUrl(task) {
-      const subjectName = getSubjectName(task.subjectId);
+      const subjectName = getTaskSubjectName(task);
       const title = `提出期限：${subjectName} / ${task.title}`;
       const startDate = formatGoogleCalendarDate(task.dueDate);
       const endDate = formatGoogleCalendarDate(addDaysToDateString(task.dueDate, 1));
@@ -1729,6 +2291,8 @@
     }
 
     function openGoogleCalendarTask(id) {
+      if (!requireTaskAccess()) return;
+
       const task = tasks.find(item => item.id === id);
       if (!task) return;
 
@@ -1791,9 +2355,9 @@
           type="button"
           class="${className} ${extraClass} ${priorityClass(task.priority)} ${task.completed ? "completed-task" : ""}"
           onclick='toggleTaskCompleted(${jsArgument(task.id)})'
-          aria-label="${escapeHtml(getSubjectName(task.subjectId))} / ${escapeHtml(task.title)}の完了状態を切り替え"
+          aria-label="${escapeHtml(getTaskSubjectName(task))} / ${escapeHtml(task.title)}の完了状態を切り替え"
         >
-          <span class="${titleClass}">${escapeHtml(getSubjectName(task.subjectId))} / ${escapeHtml(task.title)}</span>
+          <span class="${titleClass}">${escapeHtml(getTaskSubjectName(task))} / ${escapeHtml(task.title)}</span>
           <span class="${metaClass}">${dueText}${statusText}・優先度 ${priorityLabel(task.priority)}</span>
         </button>
       `;
@@ -1817,9 +2381,16 @@
     function renderTodayFocus() {
       const title = document.getElementById("taskFocusTitle");
       const list = document.getElementById("todayFocusList");
-      const focusTasks = getUpcomingTasks();
 
       title.textContent = "期限が近い課題";
+
+      if (!isTaskAccessReady()) {
+        list.classList.remove("expanded");
+        list.innerHTML = loginRequiredHtml();
+        return;
+      }
+
+      const focusTasks = getUpcomingTasks();
 
       if (focusTasks.length === 0) {
         list.classList.remove("expanded");
@@ -1840,6 +2411,11 @@
 
     function renderSevenDayTasks() {
       const list = document.getElementById("sevenDayTaskList");
+      if (!isTaskAccessReady()) {
+        list.innerHTML = loginRequiredHtml();
+        return;
+      }
+
       let html = "";
 
       for (let offset = 0; offset < 7; offset++) {
@@ -1892,6 +2468,11 @@
 
     function renderTasks() {
       const list = document.getElementById("taskList");
+      if (!isTaskAccessReady()) {
+        list.innerHTML = loginRequiredHtml();
+        return;
+      }
+
       const sorted = [...tasks].sort((a, b) => {
         if (a.completed !== b.completed) return a.completed ? 1 : -1;
         return a.dueDate.localeCompare(b.dueDate);
@@ -1907,7 +2488,7 @@
           <div class="task-main">
             <div class="item-title">${escapeHtml(task.title)}</div>
             <div class="task-meta">
-              <span class="badge">${escapeHtml(getSubjectName(task.subjectId))}</span>
+              <span class="badge">${escapeHtml(getTaskSubjectName(task))}</span>
               <span class="badge ${dueBadgeClass(task.dueDate)}">提出期限 ${escapeHtml(task.dueDate)}（${weekdays[parseDateInput(task.dueDate).getDay()]}）</span>
               <span class="badge ${dueBadgeClass(task.dueDate)}">${getDueLabel(task.dueDate)}</span>
               <span class="badge ${priorityClass(task.priority)}">優先度 ${priorityLabel(task.priority)}</span>
@@ -1939,10 +2520,20 @@
     }
 
     function renderCalendar() {
-      removeExpiredTasks();
-
       const title = document.getElementById("calendarTitle");
       const grid = document.getElementById("calendarGrid");
+
+      if (!isTaskAccessReady()) {
+        title.textContent = "カレンダー";
+        document.getElementById("calendarMonthCount").textContent = "0件";
+        document.getElementById("calendarMonthUnfinished").textContent = "0件";
+        document.getElementById("calendarMonthOverdue").textContent = "0件";
+        grid.innerHTML = loginRequiredHtml();
+        renderUpcomingTasks();
+        return;
+      }
+
+      removeExpiredTasks();
       const year = visibleCalendarYear;
       const month = visibleCalendarMonth;
       const monthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
@@ -1991,7 +2582,7 @@
               onclick='toggleTaskCompleted(${jsArgument(task.id)})'
               aria-label="${escapeHtml(task.title)}の完了状態を切り替え"
             >
-              <span class="calendar-task-title">${task.completed ? "✓ " : ""}${escapeHtml(getSubjectName(task.subjectId))} / ${escapeHtml(task.title)}</span>
+              <span class="calendar-task-title">${task.completed ? "✓ " : ""}${escapeHtml(getTaskSubjectName(task))} / ${escapeHtml(task.title)}</span>
               <span class="calendar-task-meta">優先度 ${priorityLabel(task.priority)}${task.completed ? "・完了" : ""}</span>
             </button>
           `).join("");
@@ -2013,6 +2604,11 @@
 
     function renderUpcomingTasks() {
       const list = document.getElementById("upcomingTaskList");
+      if (!isTaskAccessReady()) {
+        list.innerHTML = loginRequiredHtml();
+        return;
+      }
+
       const upcoming = [...tasks]
         .sort((a, b) => {
           if (a.completed !== b.completed) return a.completed ? 1 : -1;
@@ -2029,7 +2625,7 @@
         <div class="item ${task.completed ? "completed-task-card" : ""}">
           <div>
             <div class="item-title">${escapeHtml(task.title)}</div>
-            <span class="badge">${escapeHtml(getSubjectName(task.subjectId))}</span>
+            <span class="badge">${escapeHtml(getTaskSubjectName(task))}</span>
             <span class="badge ${dueBadgeClass(task.dueDate)}">締切 ${escapeHtml(task.dueDate)}（${weekdays[parseDateInput(task.dueDate).getDay()]}）</span>
             <span class="badge ${priorityClass(task.priority)}">優先度 ${priorityLabel(task.priority)}</span>
             <span class="badge ${task.completed ? "low" : ""}">状態 ${task.completed ? "完了済み" : "未完了"}</span>
@@ -2045,6 +2641,10 @@
     }
 
     function renderCalendarGridFor(year, month) {
+      if (!isTaskAccessReady()) {
+        return { html: loginRequiredHtml(), monthTasks: [], unfinished: [] };
+      }
+
       const monthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
       const firstDay = new Date(year, month, 1).getDay();
       const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -2081,7 +2681,7 @@
               onclick='toggleTaskCompleted(${jsArgument(task.id)})'
               aria-label="${escapeHtml(task.title)}の完了状態を切り替え"
             >
-              <span class="calendar-task-title">${task.completed ? "✓ " : ""}${escapeHtml(getSubjectName(task.subjectId))} / ${escapeHtml(task.title)}</span>
+              <span class="calendar-task-title">${task.completed ? "✓ " : ""}${escapeHtml(getTaskSubjectName(task))} / ${escapeHtml(task.title)}</span>
               <span class="calendar-task-meta">優先度 ${priorityLabel(task.priority)}${task.completed ? "・完了" : ""}</span>
             </button>
           `).join("");
@@ -2137,7 +2737,7 @@
     }
 
     function renderAll() {
-      removeExpiredTasks();
+      if (isTaskAccessReady()) removeExpiredTasks();
       renderSubjectManager();
       renderTemplateManager();
       renderSubjectOptions();
@@ -2148,6 +2748,7 @@
       renderCalendar();
       renderMobileCalendar();
       updateTaskFormPanel();
+      updateInteractiveState();
     }
 
     resetTaskForm();
@@ -2163,7 +2764,7 @@
       });
 
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=7", { updateViaCache: "none" })
+        navigator.serviceWorker.register("./service-worker.js?v=8", { updateViaCache: "none" })
           .then(registration => registration.update())
           .catch(error => console.warn("Service Worker registration failed:", error));
       });
