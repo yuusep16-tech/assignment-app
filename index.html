@@ -1316,7 +1316,6 @@
       GoogleAuthProvider,
       onAuthStateChanged,
       signInWithPopup,
-      signInWithRedirect,
       signOut
     } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
     import {
@@ -1373,15 +1372,8 @@
         onAuthStateChanged(callback) {
           return onAuthStateChanged(auth, callback);
         },
-        async signInWithGoogle() {
-          try {
-            return await signInWithPopup(auth, provider);
-          } catch (error) {
-            if (error.code === "auth/popup-blocked" || error.code === "auth/operation-not-supported-in-this-environment") {
-              return signInWithRedirect(auth, provider);
-            }
-            throw error;
-          }
+        signInWithGoogle() {
+          return signInWithPopup(auth, provider);
         },
         signOutUser() {
           return signOut(auth);
@@ -2764,7 +2756,7 @@
       });
 
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=8", { updateViaCache: "none" })
+        navigator.serviceWorker.register("./service-worker.js?v=9", { updateViaCache: "none" })
           .then(registration => registration.update())
           .catch(error => console.warn("Service Worker registration failed:", error));
       });
